@@ -1,0 +1,1612 @@
+<!-- 本工作台通过 WorkBuddy 本地方案搭建（资料库 skill 当前不可用，自动降级为单文件 HTML + localStorage）。
+     注：资料库可用时应改为 library skill 全托管，此处为兜底方案。 -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>小爱远程实习兼职赚钱工作台</title>
+<style>
+  :root{
+    --primary:#0ea371;
+    --primary-dark:#0b7a57;
+    --primary-soft:#e6f7f1;
+    --bg:#f4f6f8;
+    --card:#ffffff;
+    --text:#16201d;
+    --muted:#7c8a85;
+    --line:#ebefee;
+    --danger:#e5484d;
+    --danger-soft:#fdeced;
+    --warn:#f5a524;
+    --warn-soft:#fef3e2;
+    --radius:18px;
+    --shadow:0 1px 2px rgba(16,32,29,.04),0 6px 20px rgba(16,32,29,.05);
+    --shadow-sm:0 1px 2px rgba(16,32,29,.04);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;
+    background:var(--bg);color:var(--text);line-height:1.6;
+    padding-bottom:calc(env(safe-area-inset-bottom) + 70px);
+    -webkit-font-smoothing:antialiased;
+  }
+  /* 顶部栏 */
+  header{
+    position:sticky;top:0;z-index:20;background:rgba(255,255,255,.85);
+    backdrop-filter:saturate(180%) blur(14px);
+    border-bottom:1px solid var(--line);
+    padding:13px 20px;padding-top:calc(env(safe-area-inset-top) + 13px);
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:17px;letter-spacing:-.2px}
+  .brand svg{width:26px;height:26px;color:var(--primary)}
+  .sync{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--muted)}
+  .sync .dot{width:8px;height:8px;border-radius:50%;background:var(--primary)}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  /* 今天要处理 */
+  .today{
+    background:linear-gradient(135deg,#ecfdf5,#d1fae5);
+    border:1px solid var(--primary-soft);border-radius:var(--radius);
+    padding:16px;margin-bottom:18px;box-shadow:var(--shadow);
+  }
+  .today h2{font-size:15px;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+  .today h2 svg{width:18px;height:18px;color:var(--primary-dark)}
+  .today-item{
+    background:#fff;border-radius:12px;padding:10px 12px;margin-bottom:8px;
+    display:flex;align-items:center;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04)
+  }
+  .today-item.overdue{border-left:4px solid var(--danger)}
+  .today-item.due{border-left:4px solid var(--warn)}
+  .today-item .t-main{flex:1;font-size:14px}
+  .today-item .t-tag{font-size:11px;padding:2px 8px;border-radius:20px;background:var(--danger-soft);color:var(--danger);font-weight:600}
+  .today-item .t-tag.due{background:var(--warn-soft);color:var(--warn)}
+  .btn-mini{
+    border:none;background:var(--primary);color:#fff;font-size:12px;font-weight:600;
+    padding:6px 12px;border-radius:20px;cursor:pointer;min-height:32px
+  }
+  .btn-mini.ghost{background:#fff;color:var(--primary-dark);border:1px solid var(--primary)}
+  .empty-tip{font-size:13px;color:var(--muted);padding:6px 2px}
+  /* Tab 导航 */
+  .tabs{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{
+    flex:1;min-width:90px;text-align:center;padding:10px 6px;border-radius:12px;
+    background:var(--card);border:1px solid var(--line);cursor:pointer;font-size:13px;font-weight:600;
+    color:var(--muted);transition:.15s;box-shadow:var(--shadow)
+  }
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .tab svg{width:16px;height:16px;display:block;margin:0 auto 4px}
+  .panel{display:none;animation:fade .2s ease}
+  .panel.active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  /* 区块卡片 */
+  .card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:16px;box-shadow:var(--shadow)}
+  .card h3{font-size:16px;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+  .card h3 svg{width:18px;height:18px;color:var(--primary)}
+  .card .sub{font-size:12px;color:var(--muted);margin-bottom:14px}
+  /* 表单 */
+  label{display:block;font-size:13px;font-weight:600;margin:10px 0 5px;color:#374151}
+  input,select,textarea{
+    width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;
+    background:#fff;color:var(--text);font-family:inherit
+  }
+  textarea{resize:vertical;min-height:72px}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  .row{display:flex;gap:10px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:120px}
+  .btn{
+    border:none;background:var(--primary);color:#fff;font-size:15px;font-weight:600;
+    padding:12px 18px;border-radius:12px;cursor:pointer;min-height:44px;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px
+  }
+  .btn svg{width:16px;height:16px}
+  .btn.ghost{background:#fff;color:var(--primary-dark);border:1px solid var(--primary)}
+  .btn.danger{background:var(--danger)}
+  .btn.sm{font-size:13px;padding:8px 14px;min-height:38px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  /* 列表项 */
+  .item{
+    border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px;
+    background:#fff;position:relative
+  }
+  .item .ih{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .item .title{font-weight:700;font-size:15px;color:#111827}
+  .item .meta{font-size:12px;color:var(--muted);margin-top:3px}
+  .item .body{font-size:13px;color:#374151;margin-top:8px;white-space:pre-wrap}
+  .tag{
+    display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;
+    background:var(--primary-soft);color:var(--primary-dark);font-weight:600;margin:3px 4px 0 0
+  }
+  .tag.gray{background:#f3f4f6;color:#6b7280}
+  .tag.red{background:var(--danger-soft);color:var(--danger)}
+  .item .ops{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+  .item .ops button{
+    border:1px solid var(--line);background:#fff;color:var(--muted);font-size:12px;
+    padding:5px 11px;border-radius:8px;cursor:pointer;min-height:34px
+  }
+  .item .ops button.del{color:var(--danger);border-color:var(--danger-soft)}
+  .badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px}
+  .badge.hard{background:var(--danger-soft);color:var(--danger)}
+  .badge.soft{background:var(--primary-soft);color:var(--primary-dark)}
+  /* 推送卡 */
+  .push{
+    background:linear-gradient(135deg,#fff,#ecfdf5);border:1px dashed var(--primary);
+    border-radius:12px;padding:12px 14px;margin-bottom:10px
+  }
+  .push .ph{font-size:12px;color:var(--primary-dark);font-weight:700;margin-bottom:4px}
+  .push .pt{font-weight:700;font-size:14px}
+  /* 底部Tab栏(移动端) */
+  .bottomnav{
+    position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:1px solid var(--line);
+    display:flex;padding-bottom:env(safe-area-inset-bottom);
+  }
+  .bottomnav button{
+    flex:1;border:none;background:none;padding:8px 2px;font-size:11px;color:var(--muted);
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;font-family:inherit
+  }
+  .bottomnav button svg{width:20px;height:20px}
+  .bottomnav button.active{color:var(--primary)}
+  /* 抽屉(设置/备份) */
+  .mask{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:40;display:none}
+  .mask.show{display:block}
+  .drawer{
+    position:fixed;right:0;top:0;bottom:0;width:min(420px,92vw);background:#fff;z-index:50;
+    transform:translateX(100%);transition:.25s;overflow-y:auto;padding:20px;
+    padding-bottom:calc(env(safe-area-inset-bottom) + 20px)
+  }
+  .drawer.show{transform:none}
+  .drawer h3{margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+  .drawer h3 .x{border:none;background:none;font-size:22px;cursor:pointer;color:var(--muted);line-height:1}
+  /* 提示横幅 */
+  .banner{
+    background:var(--warn-soft);color:#92400e;border-radius:12px;padding:10px 14px;font-size:13px;
+    margin-bottom:14px;display:flex;align-items:center;gap:8px
+  }
+  .banner svg{width:16px;height:16px;flex-shrink:0}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5}
+  /* toast */
+  .toast{
+    position:fixed;left:50%;top:80px;transform:transl(-50%,-20px);transform:translateX(-50%);
+    background:#111827;color:#fff;font-size:13px;padding:10px 18px;border-radius:24px;z-index:99;
+    opacity:0;transition:.25s;pointer-events:none;white-space:nowrap;transform:translateX(-50%) translateY(-20px)
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* ===== 源文件预览弹窗 ===== */
+  .modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(720px,92vw);max-height:84vh;display:flex;flex-direction:column;
+    background:#fff;border-radius:16px;box-shadow:0 24px 60px rgba(0,0,0,.25);z-index:61;overflow:hidden}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line);font-weight:700;font-size:15px}
+  .modal-h .x{width:30px;height:30px;border-radius:8px;border:none;background:#f1f5f9;font-size:20px;cursor:pointer;line-height:1}
+  .modal-b{padding:18px;overflow:auto;white-space:pre-wrap;word-break:break-word;font-size:13.5px;line-height:1.7;color:#1f2937;background:#fcfcfd}
+  .modal-b .src-meta{color:var(--muted);font-size:12px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+  /* ===== 两栏布局：左列表 + 右内容 ===== */
+  .layout{display:grid;grid-template-columns:248px 1fr;gap:18px;align-items:start;margin-top:16px}
+  .sidebar{
+    position:sticky;top:74px;background:var(--card);border-radius:var(--radius);
+    padding:12px;box-shadow:var(--shadow);border:1px solid var(--line)
+  }
+  .sidebar .sb-title{font-size:12px;font-weight:700;color:var(--muted);padding:6px 10px 8px;letter-spacing:.3px}
+  .sb-item{
+    display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:11px;cursor:pointer;
+    font-size:14px;font-weight:600;color:#374151;transition:.15s;margin-bottom:2px;position:relative
+  }
+  .sb-item:hover{background:var(--primary-soft)}
+  .sb-item.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(14,163,113,.25)}
+  .sb-item .sb-ico{width:30px;height:30px;border-radius:9px;background:var(--primary-soft);color:var(--primary-dark);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sb-item.active .sb-ico{background:rgba(255,255,255,.2);color:#fff}
+  .sb-item .sb-ico svg{width:16px;height:16px}
+  .sb-item .sb-meta{margin-left:auto;font-size:11px;font-weight:700;color:var(--primary-dark);
+    background:var(--primary-soft);border-radius:20px;padding:1px 8px;min-width:22px;text-align:center}
+  .sb-item.active .sb-meta{background:rgba(255,255,255,.25);color:#fff}
+  .content{min-width:0}
+  @media(min-width:768px){
+    .bottomnav{display:none}
+    .tabs{display:none}
+    body{padding-bottom:24px}
+  }
+  @media(max-width:767px){
+    .layout{grid-template-columns:1fr;gap:12px;margin-top:12px}
+    .sidebar{position:sticky;top:64px;z-index:15;padding:8px;display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .sidebar .sb-title{display:none}
+    .sb-item{margin-bottom:0;white-space:nowrap;flex-shrink:0;padding:9px 12px}
+    .sb-item .sb-meta{display:none}
+    .sb-item .sb-ico{width:26px;height:26px}
+    .pc-only{display:none}
+  }
+
+  /* ===== 首页 Dashboard ===== */
+  .hero{
+    background:linear-gradient(120deg,#0ea371,#0b7a57);
+    border-radius:var(--radius);padding:22px 22px 20px;margin-bottom:18px;color:#fff;
+    box-shadow:var(--shadow);position:relative;overflow:hidden
+  }
+  .hero::after{content:"";position:absolute;right:-30px;top:-30px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.08)}
+  .hero h1{font-size:21px;font-weight:800;letter-spacing:-.4px;margin-bottom:4px}
+  .hero p{font-size:13px;opacity:.9}
+  .hero .stats{display:flex;gap:18px;margin-top:14px;flex-wrap:wrap}
+  .hero .stat{display:flex;flex-direction:column}
+  .hero .stat b{font-size:22px;font-weight:800;line-height:1}
+  .hero .stat span{font-size:11px;opacity:.85;margin-top:3px}
+  .sec-title{display:flex;align-items:center;justify-content:space-between;margin:22px 4px 12px}
+  .sec-title h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:7px}
+  .sec-title h2 svg{width:18px;height:18px;color:var(--primary)}
+  .sec-title a{font-size:12px;color:var(--primary-dark);font-weight:600;cursor:pointer}
+  .mod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  .mod-card{
+    background:var(--card);border-radius:14px;padding:14px;box-shadow:var(--shadow-sm);
+    cursor:pointer;border:1px solid var(--line);transition:.15s;position:relative;overflow:hidden
+  }
+  .mod-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--primary-soft)}
+  .mod-card .ico{width:38px;height:38px;border-radius:11px;background:var(--primary-soft);color:var(--primary-dark);
+    display:flex;align-items:center;justify-content:center;margin-bottom:10px}
+  .mod-card .ico svg{width:20px;height:20px}
+  .mod-card .mt{font-weight:700;font-size:14px;color:#16201d}
+  .mod-card .md{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.45;height:33px;overflow:hidden}
+  .mod-card .mc{position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;color:var(--primary-dark);
+    background:var(--primary-soft);border-radius:20px;padding:2px 8px}
+  /* 两栏布局 */
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:767px){.cols{grid-template-columns:1fr}}
+  /* 日历 */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .cal-head .mt{font-weight:700;font-size:15px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+  .cal-dow{font-size:11px;text-align:center;color:var(--muted);padding:4px 0;font-weight:600}
+  .cal-cell{min-height:52px;border-radius:8px;padding:4px 5px;font-size:11px;background:#fafbfb;border:1px solid var(--line);position:relative;cursor:pointer}
+  .cal-cell.empty{background:none;border:none;cursor:default}
+  .cal-cell .dnum{font-weight:700;color:#374151}
+  .cal-cell.today{background:var(--primary-soft);border-color:var(--primary)}
+  .cal-cell .dot{position:absolute;bottom:5px;right:5px;width:7px;height:7px;border-radius:50%;background:var(--primary)}
+  .cal-cell .dot.over{background:var(--danger)}
+  .cal-cell .dot.near{background:var(--warn)}
+  .cal-cell .cnt{position:absolute;top:3px;right:5px;font-size:10px;font-weight:700;color:var(--muted)}
+  .cal-pop{margin-top:10px;font-size:13px}
+  .cal-pop .ev{padding:7px 10px;border-radius:8px;background:#fafbfb;border:1px solid var(--line);margin-bottom:6px;display:flex;gap:8px;align-items:center}
+  .cal-pop .ev .pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  /* 时间轴 */
+  .tl{position:relative;padding-left:22px}
+  .tl::before{content:"";position:absolute;left:6px;top:4px;bottom:4px;width:2px;background:var(--line)}
+  .tl-item{position:relative;padding:0 0 18px 4px}
+  .tl-item::before{content:"";position:absolute;left:-19px;top:4px;width:12px;height:12px;border-radius:50%;
+    background:#fff;border:3px solid var(--primary);box-shadow:0 0 0 3px var(--bg)}
+  .tl-item.s-done::before{border-color:var(--primary)}
+  .tl-item.s-offer::before{border-color:#16a34a;background:#16a34a}
+  .tl-item.s-int::before{border-color:var(--warn);background:var(--warn)}
+  .tl-item.s-fail::before{border-color:var(--danger);background:var(--danger)}
+  .tl-item.s-jd::before{border-color:#6366f1;background:#6366f1}
+  .tl-item.s-exp::before{border-color:#0ea371;background:#0ea371}
+  .tl-date{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px}
+  .tl-title{font-size:14px;font-weight:600;color:#16201d}
+  .tl-sub{font-size:12px;color:var(--muted);margin-top:1px}
+  .tl-tag{display:inline-block;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:20px;margin-left:6px;vertical-align:middle}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>
+    小爱远程实习兼职赚钱工作台
+  </div>
+  <div class="sync" title="本地存储模式"><span class="dot"></span>本地存储</div>
+  <div class="sync" id="akiBadge" title="aki 直连状态（密钥已内嵌，打开即在线）" style="cursor:default">aki 状态未知</div>
+</header>
+
+<div class="wrap">
+  <!-- 首页 Dashboard -->
+  <section class="panel active" id="p-home">
+    <div class="hero">
+      <h1>小爱 · 远程实习兼职赚钱工作台</h1>
+      <p>一站式搞定：行业认知 → 经历沉淀 → JD拆解 → 能力补强 → 简历投递 → 面试通关</p>
+      <div class="stats">
+        <div class="stat"><b id="hs-industry">0</b><span>行业认知</span></div>
+        <div class="stat"><b id="hs-exp">0</b><span>经历素材</span></div>
+        <div class="stat"><b id="hs-jd">0</b><span>拆解JD</span></div>
+        <div class="stat"><b id="hs-track">0</b><span>投递记录</span></div>
+        <div class="stat"><b id="hs-aki">AI</b><span>aki 驱动</span></div>
+      </div>
+    </div>
+
+    <!-- 今日一句话记录（同步到日历+投递看板） -->
+    <div class="today">
+      <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg>今日一句话记录</h2>
+      <div class="sub">一句话告诉我你今天投的岗位/状态，自动同步到日历、时间轴与投递看板（支持：投了 / 面试 / 收到offer / 入职）</div>
+      <label>今日记录</label>
+      <textarea id="homeTrack" placeholder="例：今天投了 SHEIN 海外市场运营；明天面试 TikTok 增长；收到 UNESCO offer；入职 FET 标注项目"></textarea>
+      <div class="actions">
+        <button class="btn" onclick="parseTrackFrom('homeTrack')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>记一笔并同步</button>
+      </div>
+    </div>
+
+    <div class="sec-title">
+      <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>七大模块</h2>
+      <a onclick="switchTab('industry')">进入全部模块 ›</a>
+    </div>
+    <div class="mod-grid" id="modGrid"></div>
+
+    <div class="cols" style="margin-top:18px">
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>求职日历</h3>
+        <div class="sub">截止日 / 投递日 / 面试日一目了然，逾期红、临近橙</div>
+        <div class="cal-head">
+          <button class="btn ghost sm" onclick="calShift(-1)">‹</button>
+          <span class="mt" id="calMonth"></span>
+          <button class="btn ghost sm" onclick="calShift(1)">›</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-pop" id="calPop"></div>
+      </div>
+      <div class="card">
+        <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M2 12h20"/><circle cx="12" cy="12" r="9"/></svg>求职时间轴</h3>
+        <div class="sub">从经历沉淀到投递进展，你的搞钱历程全记录</div>
+        <div class="tl" id="timeline"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 两栏布局：左列表 + 右内容 -->
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sb-title">板块导航</div>
+      <div class="sb-item active" data-tab="home" onclick="switchTab('home')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg></span>
+        首页看板 <span class="sb-meta" id="sb-home">·</span>
+      </div>
+      <div class="sb-item" data-tab="industry" onclick="switchTab('industry')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></span>
+        行业任职库 <span class="sb-meta" id="sb-industry">0</span>
+      </div>
+      <div class="sb-item" data-tab="exp" onclick="switchTab('exp')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg></span>
+        个人经历库 <span class="sb-meta" id="sb-exp">0</span>
+      </div>
+      <div class="sb-item" data-tab="jd" onclick="switchTab('jd')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg></span>
+        JD分析库 <span class="sb-meta" id="sb-jd">0</span>
+      </div>
+      <div class="sb-item" data-tab="gap" onclick="switchTab('gap')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span>
+        能力缺口 <span class="sb-meta" id="sb-gap">0</span>
+      </div>
+      <div class="sb-item" data-tab="resume" onclick="switchTab('resume')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg></span>
+        简历版本库 <span class="sb-meta" id="sb-resume">0</span>
+      </div>
+      <div class="sb-item" data-tab="track" onclick="switchTab('track')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg></span>
+        投递看板 <span class="sb-meta" id="sb-track">0</span>
+      </div>
+      <div class="sb-item" data-tab="interview" onclick="switchTab('interview')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg></span>
+        面试素材库 <span class="sb-meta" id="sb-interview">0</span>
+      </div>
+      <div class="sb-item" data-tab="coverletter" onclick="switchTab('coverletter')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 7l8 5 8-5M4 7v10"/></svg></span>
+        求职信库 <span class="sb-meta" id="sb-coverletter">0</span>
+      </div>
+      <div class="sb-item" data-tab="worklog" onclick="switchTab('worklog')">
+        <span class="sb-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6h6V2M5 22h14a2 2 0 0 0 2-2V8l-7-6H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/></svg></span>
+        远程工作记录 <span class="sb-meta" id="sb-worklog">0</span>
+      </div>
+    </aside>
+    <div class="content">
+
+  <!-- 模块1 行业任职库 -->
+  <section class="panel" id="p-industry">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>每日岗位推送</h3>
+      <div class="sub">基于你的关注行业，每天为你精选 2 条合适岗位（点击刷新可模拟新推荐）</div>
+      <div id="pushList"></div>
+      <div id="akiRecBox" style="margin-top:10px"></div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="refreshPush()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.8-3.4L23 10M1 14l4.7 4.4A9 9 0 0 0 20.5 15"/></svg>刷新推送</button>
+        <button class="btn ghost sm" id="akiRecBtn" onclick="akiRecommend()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.7 5.7 21l2.3-7.3-6-4.3h7.6z"/></svg>aki 智能推荐</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 9h16M9 4v16"/></svg>新增行业/岗位认知</h3>
+      <div class="sub">按行业归档，标注日期，总结趋势与头部公司</div>
+      <div class="row">
+        <div><label>行业</label><input id="ind-industry" placeholder="如：跨境电商"></div>
+        <div><label>岗位方向</label><input id="ind-role" placeholder="如：海外市场运营"></div>
+      </div>
+      <div class="row">
+        <div><label>日期</label><input id="ind-date" type="date"></div>
+        <div><label>头部公司</label><input id="ind-company" placeholder="如：SHEIN、TikTok Shop"></div>
+      </div>
+      <label>任职趋势 / 岗位认知总结</label>
+      <textarea id="ind-note" placeholder="总结该行业/岗位的最新发展趋势、能力要求、机会判断…"></textarea>
+      <label>关注标签（逗号分隔）</label>
+      <input id="ind-tags" placeholder="如：远程友好,英语要求,高薪">
+      <div class="actions">
+        <button class="btn" onclick="addIndustry()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>保存归档</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>行业任职档案</h3>
+      <div class="sub" id="ind-count"></div>
+      <div id="indList"></div>
+    </div>
+  </section>
+
+  <!-- 模块2 个人经历库 -->
+  <section class="panel" id="p-exp">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>新增经历</h3>
+      <div class="sub">课程项目 / 学生工作 / 实习经历 都集中存放，写简历时从这里挑素材</div>
+      <div class="row">
+        <div><label>经历类型</label>
+          <select id="exp-type"><option>课程项目</option><option>学生工作</option><option>实习经历</option><option>其他</option></select>
+        </div>
+        <div><label>项目名称 / 职务</label><input id="exp-name" placeholder="如：校园公众号运营负责人"></div>
+      </div>
+      <label>原始描述（随手记，越真实越好）</label>
+      <textarea id="exp-raw" placeholder="做了什么、用了什么工具、有什么结果…"></textarea>
+      <label>STAR 包装（系统帮你润色，可手动改）</label>
+      <textarea id="exp-star" placeholder="点击「AI润色」自动按 STAR 法则生成，或手动填写"></textarea>
+      <div class="row">
+        <div><label>能力标签（逗号分隔）</label><input id="exp-tags" placeholder="如：内容运营,数据分析,团队协作"></div>
+        <div><label>关联行业（可选）</label><input id="exp-ind" placeholder="如：跨境电商"></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="polishExp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.7 5.7 21l2.3-7.3-6-4.3h7.6z"/></svg>AI润色(STAR)</button>
+        <button class="btn" onclick="addExp()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>入库</button>
+      </div>
+      <div class="hint">💡 润色为本地规则生成（无外部模型），会把你的原始描述重组成「情境-任务-行动-结果」结构并补上量化占位，投前记得替换成真实数字。</div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>我的经历库</h3>
+      <div class="sub" id="exp-count"></div>
+      <div id="expList"></div>
+    </div>
+  </section>
+
+  <!-- 模块3 JD分析库 -->
+  <section class="panel" id="p-jd">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/></svg>新增 JD 并拆解</h3>
+      <div class="sub">粘贴岗位 JD，自动拆出核心能力 / 硬性门槛 / 岗位特色，按行业+岗位分类</div>
+      <div class="row">
+        <div><label>行业</label><input id="jd-industry" placeholder="如：PR"></div>
+        <div><label>岗位</label><input id="jd-role" placeholder="如：海外PR"></div>
+      </div>
+      <label>JD 原文 / 链接备注</label>
+      <textarea id="jd-text" placeholder="把岗位描述粘贴到这里…"></textarea>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="analyzeJD()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>智能拆解</button>
+        <button class="btn" onclick="addJD()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>存入分析库</button>
+      </div>
+      <div class="hint">💡 aki 语义拆解：识别硬性门槛（学历/证书/年限/工具）与软性素质，并提炼岗位特色。攒多份后点上方「生成规律洞察」看跨岗位规律。</div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M3 14c4-4 8 2 12-2"/></svg>JD 分析档案</h3>
+      <div class="sub" id="jd-count"></div>
+      <div id="jdList"></div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 16v-4M12 8h.01"/></svg>跨岗位规律洞察</h3>
+      <div class="sub">把多份 JD 放在一起，aki 帮你找出高频硬性门槛、通用软素质、不同行业的岗位特色差异。</div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="jdInsight()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12c.6.5 1 1.2 1 2h6c0-.8.4-1.5 1-2a7 7 0 0 0-4-12z"/></svg>生成规律洞察</button>
+      </div>
+      <div id="jdInsightBox"></div>
+    </div>
+  </section>
+
+  <!-- 模块4 能力缺口清单 -->
+  <section class="panel" id="p-gap">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>能力缺口清单</h3>
+      <div class="sub">把你的经历能力标签 × 心仪 JD 的要求放一起对比，自动识别还差什么，并给补充建议</div>
+      <div class="row">
+        <div><label>目标行业</label><input id="gap-industry" placeholder="如：跨境电商（留空=全部JD）"></div>
+        <div><label>目标岗位</label><input id="gap-role" placeholder="如：海外市场运营（可选）"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="genGap()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>生成我的能力缺口</button>
+      </div>
+      <div class="hint">💡 对比逻辑（本地）：取你经历库所有能力标签，与所选 JD 的硬/软要求做差集 → 缺口 = JD要求 − 你已有的标签。</div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M3 14c4-4 8 2 12-2"/></svg>缺口分析结果</h3>
+      <div class="sub" id="gap-count"></div>
+      <div id="gapList"></div>
+    </div>
+  </section>
+
+  <!-- 模块5 简历版本库 -->
+  <section class="panel" id="p-resume">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/></svg>新增简历版本</h3>
+      <div class="sub">按「公司-岗位-日期」命名，按行业+岗位分类，下次投新岗位直接从库里找最接近的一版来改</div>
+      <div class="row">
+        <div><label>公司</label><input id="rs-company" placeholder="如：SHEIN"></div>
+        <div><label>岗位</label><input id="rs-role" placeholder="如：海外市场运营"></div>
+      </div>
+      <div class="row">
+        <div><label>日期</label><input id="rs-date" type="date"></div>
+        <div><label>行业分类</label><input id="rs-industry" placeholder="如：跨境电商"></div>
+      </div>
+      <label>简历内容 / 亮点摘要</label>
+      <textarea id="rs-content" placeholder="粘贴该版简历的核心内容，或写这版相对上一版的改动点、投递策略…"></textarea>
+      <div class="actions">
+        <button class="btn" onclick="addResume()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>存入版本库</button>
+        <button class="btn ghost sm" onclick="findSimilar()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4-4"/></svg>找最接近的一版</button>
+      </div>
+      <div id="similarBox" class="hint"></div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>简历版本档案</h3>
+      <div class="sub" id="rs-count"></div>
+      <div id="rsList"></div>
+    </div>
+  </section>
+
+  <!-- 模块6 投递看板 -->
+  <section class="panel" id="p-track">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/></svg>一句话加投递</h3>
+      <div class="sub">用一句话描述，自动解析公司 / 岗位 / 投递日期 / 状态（已投 / 面试 / 挂了）</div>
+      <label>投递描述</label>
+      <textarea id="tk-text" placeholder="例：今天投了 SHEIN 的海外市场运营；昨天面试了 TikTok 增长岗；上周 Canva 用户运营挂了"></textarea>
+      <div class="actions">
+        <button class="btn" onclick="parseTrack()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>解析并加入看板</button>
+        <button class="btn ghost sm" onclick="addTrackManual()">手动添加</button>
+      </div>
+      <div class="hint">💡 解析规则（本地）：识别「投了/面试了/收到offer/入职」定状态，提取公司名与岗位名；多条用换行或「；」分隔。投递日自动写入日历与时间轴，与看板实时同步。</div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M3 14c4-4 8 2 12-2"/></svg>投递统计</h3>
+      <div id="tkStat" class="row" style="gap:10px"></div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>看板</h3>
+      <div class="sub" id="tk-count"></div>
+      <div id="tkList"></div>
+    </div>
+  </section>
+
+  <!-- 模块7 面试素材库 + AI助手占位 -->
+  <section class="panel" id="p-interview">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 9h8M8 13h5"/></svg>新增面试题</h3>
+      <div class="sub">按行业分类存放，每题备好答题思路</div>
+      <div class="row">
+        <div><label>行业</label><input id="iv-industry" placeholder="如：跨境电商"></div>
+        <div><label>题目</label><input id="iv-q" placeholder="如：你怎么看独立站未来的流量结构？"></div>
+      </div>
+      <label>答题思路</label>
+      <textarea id="iv-a" placeholder="分点写答题框架：背景判断 → 核心观点 → 案例/数据 → 结合自身"></textarea>
+      <div class="actions">
+        <button class="btn" onclick="addInterview()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>入库</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 6v6l4 2"/></svg>AI 面试助手（待接入）</h3>
+      <div class="sub">练的时候让 AI 当面试官、随机抽题追问，练完出复盘报告。真模型对接由 aki 接入后激活。</div>
+      <div class="row">
+        <div><label>练习行业</label><input id="iv-practice-ind" placeholder="如：PR"></div>
+        <div><label>抽题数量</label><input id="iv-practice-n" type="number" value="3" min="1" max="10"></div>
+      </div>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="drawQuestions()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4-4"/></svg>随机抽题练习</button>
+      </div>
+      <div id="ivPractice" style="margin-top:12px"></div>
+      <div class="hint">⏳ 当前为本地题库占位：抽题后你可自评作答，待 aki 接入将升级为「AI 实时追问 + 自动生成复盘报告（说得好的点 / 待改进点）」。</div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>面试题库</h3>
+      <div class="sub" id="iv-count"></div>
+      <div id="ivList"></div>
+    </div>
+  </section>
+
+  <!-- 模块8 求职信库 (Cover Letter) -->
+  <section class="panel" id="p-coverletter">
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 7l8 5 8-5M4 7v10"/></svg>新增求职信 / 动机信</h3>
+      <div class="sub">按投递目标归档：目标机构、岗位、状态（构思中/已投递/已完成），aki 可帮你精修润色</div>
+      <div class="row">
+        <div><label>目标机构</label><input id="cl-target" placeholder="如：ASEF / UNESCO / FET"></div>
+        <div><label>岗位</label><input id="cl-role" placeholder="如：GSD Internship"></div>
+      </div>
+      <div class="row">
+        <div><label>来源文件</label><input id="cl-file" placeholder="如：ASEF Cover Letter.docx"></div>
+        <div><label>状态</label>
+          <select id="cl-status"><option>构思中</option><option>填写中</option><option>已投递</option><option>已完成</option></select>
+        </div>
+      </div>
+      <label>核心内容 / 摘要</label>
+      <textarea id="cl-text" placeholder="粘贴或摘要这封求职信的核心卖点、匹配逻辑…"></textarea>
+      <div class="actions">
+        <button class="btn ghost sm" onclick="polishCover()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.7 5.7 21l2.3-7.3-6-4.3h7.6z"/></svg>aki 精修</button>
+        <button class="btn" onclick="addCover()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>入库</button>
+      </div>
+      <div class="hint">💡 aki 精修：输入核心卖点后，aki 按「匹配度—能力证据—职业目标」三段式重写，贴合目标机构使命。</div>
+    </div>
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>求职信档案</h3>
+      <div class="sub" id="cl-count"></div>
+      <div id="clList"></div>
+    </div>
+  </section>
+
+  <!-- 模块9 远程工作记录 -->
+  <section class="panel" id="p-worklog">
+    <div class="today" style="margin-top:0">
+      <h2><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.9 4.9l2.8 2.8M16.3 16.3l2.8 2.8M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg>今日待处理（远程工作）</h2>
+      <div id="wlToday"></div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6h6V2M5 22h14a2 2 0 0 0 2-2V8l-7-6H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/></svg>记录一条远程工作</h3>
+      <div class="sub">把正在做/做过的远程实习、兼职都记在这里，平台就变成你的「远程工作全记录本」</div>
+      <div class="row">
+        <div><label>公司 / 项目</label><input id="wl-company" placeholder="如：FET 智库"></div>
+        <div><label>岗位 / 角色</label><input id="wl-role" placeholder="如：AI视频标注"></div>
+      </div>
+      <div class="row">
+        <div><label>开始日期</label><input id="wl-start" type="date"></div>
+        <div><label>结束日期（选填）</label><input id="wl-end" type="date"></div>
+      </div>
+      <div class="row">
+        <div><label>状态</label>
+          <select id="wl-status"><option>进行中</option><option>已结束</option></select>
+        </div>
+        <div><label>今日待办（一句话）</label><input id="wl-todo" placeholder="如：完成今日标注批次"></div>
+      </div>
+      <label>工作记录 / 备注</label>
+      <textarea id="wl-notes" placeholder="远程形式、做了什么、产出、结算方式…"></textarea>
+      <div class="actions">
+        <button class="btn" onclick="addWorklog()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>记录</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>远程工作记录</h3>
+      <div class="sub" id="wl-count"></div>
+      <div id="wlList"></div>
+    </div>
+  </section>
+
+  <div class="banner" id="backupTip" style="display:none">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <span>数据已积累不少，建议点右上角「备份」导出 JSON 存档～</span>
+  </div>
+    </div><!-- /.content -->
+  </div><!-- /.layout -->
+</div><!-- /.wrap -->
+
+<!-- 移动端底部导航 -->
+<nav class="bottomnav">
+  <button class="active" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>首页</button>
+  <button data-tab="industry"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>行业</button>
+  <button data-tab="exp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>经历</button>
+  <button data-tab="more" onclick="openDrawer()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/></svg>更多</button>
+</nav>
+
+<!-- 抽屉：备份/设置 -->
+<div class="mask" id="mask" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer">
+  <h3>模块 & 设置 <button class="x" onclick="closeDrawer()">×</button></h3>
+  <div class="card" style="box-shadow:none;border:1px solid var(--line)">
+    <h3 style="font-size:14px">快速切换模块</h3>
+    <div class="actions">
+      <button class="btn ghost sm" onclick="switchTab('home');closeDrawer()">首页看板</button>
+      <button class="btn ghost sm" onclick="switchTab('gap');closeDrawer()">能力缺口</button>
+      <button class="btn ghost sm" onclick="switchTab('resume');closeDrawer()">简历版本库</button>
+      <button class="btn ghost sm" onclick="switchTab('track');closeDrawer()">投递看板</button>
+      <button class="btn ghost sm" onclick="switchTab('interview');closeDrawer()">面试素材库</button>
+      <button class="btn ghost sm" onclick="switchTab('coverletter');closeDrawer()">求职信库</button>
+      <button class="btn ghost sm" onclick="switchTab('worklog');closeDrawer()">远程工作记录</button>
+      <button class="btn ghost sm" onclick="switchTab('home');document.getElementById('p-home').scrollIntoView();closeDrawer()">日历 / 时间轴</button>
+    </div>
+  </div>
+  <div class="card" style="box-shadow:none;border:1px solid var(--line)">
+    <h3 style="font-size:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>数据备份</h3>
+    <div class="sub">本地方案下数据只存在当前浏览器，换设备/清缓存会丢，务必定期导出。</div>
+    <div class="actions">
+      <button class="btn ghost sm" onclick="exportJSON()">导出 JSON</button>
+      <button class="btn ghost sm" onclick="document.getElementById('imp').click()">导入恢复</button>
+      <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
+      <button class="btn danger sm" onclick="clearAll()">清空示例/全部</button>
+    </div>
+    <div class="hint">导入支持上千条，直接覆盖合并；清空需二次确认。</div>
+  </div>
+  <div class="card" style="box-shadow:none;border:1px solid var(--line)">
+    <h3 style="font-size:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 6v6l4 2"/></svg>关于</h3>
+    <div class="sub">小爱远程实习兼职赚钱工作台<br>行业任职库 / 个人经历库 / JD分析库 / 能力缺口 / 简历版本库 / 投递看板 / 面试素材库<br>真 AI（aki / 阿里云百炼 qwen-plus）已内嵌密钥，<b>双击网页即用、打开即在线</b>。<br>若网络不通自动降级本地规则，不崩。⚠️ 密钥在文件内，分享链接前请知悉。</div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<!-- 源文件预览弹窗 -->
+<div class="mask" id="srcMask" onclick="closeSrc()" style="z-index:60;display:none"></div>
+<div class="modal" id="srcModal" style="display:none">
+  <div class="modal-h">
+    <span id="srcTitle">源文件预览</span>
+    <button class="x" onclick="closeSrc()">×</button>
+  </div>
+  <div class="modal-b" id="srcBody"></div>
+</div>
+
+<script>
+/* ===== 存储层 ===== */
+const KEY='wb_remotework_';
+function load(k,def){try{const v=localStorage.getItem(KEY+k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function save(k,v){localStorage.setItem(KEY+k,JSON.stringify(v));}
+let industry=load('industry',[]);
+let exps=load('exp',[]);
+let jds=load('jd',[]);
+let gaps=load('gap',[]);
+let resumes=load('resume',[]);
+let tracks=load('track',[]);
+let interviews=load('interview',[]);
+let coverletters=load('coverletter',[]);
+let worklogs=load('worklog',[]);
+
+/* ===== 首次启动种子：仅当本地为空时写入真实文档解析结果（无虚构占位数据） ===== */
+function seedIfEmpty(){
+  if(exps.length===0){
+    exps=[
+      {id:uid(),type:'实习经历',name:'联合国 IYRP 中文传播与实践工作组 · 机构联络助理',date:'2026-04',raw:'维护专家库与合作伙伴档案 100+ 条，负责日常中英邮件与电话沟通、建立详细沟通台账，参与上海青年论坛官网、蒙古国全球牧民大会等多语内容工作。',tags:['跨文化沟通','数据库维护','中英双语','国际联络','活动协调'],ind:'国际组织',star:'【情境】联合国 IYRP 中文工作组需对接多国机构伙伴；【任务】保障联络信息准确与活动顺畅执行；【行动】维护 100+ 条专家库与伙伴档案、建立沟通台账、参与多语内容生产；【结果】支撑上海青年论坛官网与蒙古全球牧民大会启动，联络零遗漏。'},
+      {id:uid(),type:'实习经历',name:'商务部援外培训项目 · 项目助理',date:'2026-05',raw:'为 2 期、服务 80+ 学员（来自 15+ 国家）的援外培训提供 12 场中英双语翻译，汇编归档 50+ 页培训文档、学员数据与评估报告，零差错。',tags:['中英双语翻译','项目管理','文档归档','跨文化','零差错'],ind:'国际组织',star:'【情境】商务部两期援外培训覆盖 15+ 国家 80+ 学员；【任务】保障知识准确传递与培训文档合规；【行动】完成 12 场中英双语翻译、汇编 50+ 页文档与评估报告；【结果】知识传递零差错，获项目组认可。'},
+      {id:uid(),type:'实习经历',name:'第十五届中国—东北亚博览会 · 成果展部实习生',date:'2025-07',raw:'统筹 200+ 国际嘉宾接待，跨 6 个部门协调信息流，制作双语简报与活动日程，支撑高级别部长级会议顺利执行。',tags:['大型活动','外宾接待','跨部门协调','双语简报','PR'],ind:'PR',star:'【情境】东北亚博览会需统筹 200+ 国际嘉宾；【任务】保障 5 天展会实时问题处置与部长级会议执行；【行动】跨 6 部门协调信息流、制作双语简报与日程；【结果】高级别会议零事故顺利执行。'},
+      {id:uid(),type:'实习经历',name:'厦门大学—马来亚大学国际高等研究院 · 行政办实习',date:'2026-04',raw:'协助筹办中马合办学术论坛，起草英文通知、邮件、报告等公文，以流利口语完成跨文化交流。',tags:['英文公文','行政协调','跨文化沟通','活动执行'],ind:'国际组织',star:'【情境】中马国际论坛需英文公文与跨境协调；【任务】保障论坛事务顺畅；【行动】起草英文通知/邮件/报告、流利口语跨文化沟通；【结果】论坛顺利举办，涉外沟通能力获验证。'},
+      {id:uid(),type:'研究经历',name:'长春市历史文化街区语言景观研究 · 第一作者/项目负责人',date:'2026-03',raw:'实地采集多语标牌数据，运用定性编码框架对 300+ 语言样本逐一标注分类，用 Python/MySQL 完成数据清洗与统计。',tags:['定性编码','数据标注','Python','MySQL','调研分析'],ind:'AI数据标注',star:'【情境】语言景观研究需系统化处理多语样本；【任务】提炼标识分布规律与商业洞察；【行动】设计编码框架、采集并标注 300+ 样本、Python/MySQL 清洗统计；【结果】输出实证报告，方法可迁移至视频逐帧标注。'},
+      {id:uid(),type:'学生工作',name:'吉林大学艺术团 · 宣传部部长',date:'2025-09',raw:'带领 15 人团队策划校级宣传活动，运营 5000+ 粉丝账号，以数据驱动内容策略使互动率提升 30%，单篇阅读量超 8000。',tags:['社媒运营','内容策划','数据分析','团队管理','KOL'],ind:'PR',star:'【情境】校级文化品牌需提升传播力；【任务】以数据驱动内容增长；【行动】带 15 人团队、运营 5000+ 粉账号、优化内容策略；【结果】互动率 +30%，单篇阅读 8000+。'},
+      {id:uid(),type:'实习经历',name:'FET 国际经济与产业科技智库 · AI视频转写数据标注',date:'2026-08',raw:'中英双语（中+英）视频画面标注方向，维护 UN 专家库 100+ 条结构化记录经验，用定性编码框架对语言样本标注分类，熟练剪映/DaVinci Resolve。',tags:['AI标注','中英双语','视频剪辑','数据质检','细心'],ind:'AI数据标注',star:'【情境】AI 视频标注项目需中英双语逐帧打标；【任务】提供高质量训练数据；【行动】沿用定性编码与 UN 库维护经验、剪映/DaVinci 核验；【结果】方法同源、上手快、错率低。'},
+      {id:uid(),type:'项目经历',name:'复旦大学金砖国家发展暑期学校 · 奖学金获得者',date:'2026-07',raw:'全国仅 2 名中国学生入选，参与金砖国家发展经济学、多边合作框架及新兴市场动态研讨。',tags:['新兴市场','多边合作','学术研究','跨文化'],ind:'国际组织',star:'【情境】金砖国家发展暑期学校全国竞争性选拔；【任务】深化新兴市场与多边治理认知；【行动】参与经济学与多边框架研讨；【结果】全国仅 2 名中国学生入选。'},
+      {id:uid(),type:'项目经历',name:'浙江大学 SDG 包容性发展暑期学校 · 全额学费奖学金',date:'2026-08',raw:'学习联合国可持续发展目标框架、包容性增长战略及公平发展政策实施。',tags:['SDG','政策研究','可持续发展'],ind:'国际组织',star:'【情境】SDG 暑期学校全额奖学金选拔；【任务】掌握包容性发展政策框架；【行动】系统学习 SDG 与公平发展实施；【结果】获全额学费奖学金。'},
+      {id:uid(),type:'证书',name:'普通话水平测试二级甲等',date:'2025',raw:'母语水平，持普通话二级甲等证书，曾参与普通话推广乡村支教，表达规范。',tags:['普通话','母语','证书','公开表达'],ind:'',star:'母语中文，普通话二级甲等，曾做普通话推广支教，表达规范。'},
+      {id:uid(),type:'证书',name:'大学英语六级 (CET-6) 550+',date:'2025-06',raw:'全国大学英语六级考试 550+ 分，英语读写流利，可准确汉化英文稿件。',tags:['CET-6','英语','证书','双语'],ind:'',star:'CET-6 550+，英语专业背景，中英双语读写流利。'},
+      {id:uid(),type:'证书',name:'初级会计专业技术资格（良好）',date:'2026',raw:'获得初级会计资格证（良好），具备公司金融、财务报表分析、投资学基础。',tags:['会计证','财务','证书'],ind:'',star:'初级会计资格证（良好），具备财务分析与报表基础。'},
+      {id:uid(),type:'证书',name:'计算机等级考试 二级(WPS)良好 / 三级(数据库技术)合格',date:'',raw:'全国计算机二级 WPS 良好、三级数据库技术合格，熟练 Excel 数据透视/VLOOKUP。',tags:['计算机','WPS','MySQL','证书'],ind:'',star:'计算机二级 WPS 良好、三级数据库合格，熟练数据透视与 VLOOKUP。'}
+    ];
+    save('exp',exps);
+  }
+  if(resumes.length===0){
+    resumes=[
+      {id:uid(),company:'国际组织类（ASEF/UNESCO/FAO/OECD）',role:'治理/可持续发展/政策研究实习',date:'2026-08',industry:'国际组织',content:'英文简历主线：英语文学+金融辅修，三语（中/英/法），UN IYRP 机构联络助理 + 商务部援外培训 12 场双语翻译 + 东北亚博览会 200+ 外宾统筹。投递目标：ASEF GSD 2026、UNESCO、FAO IYRP、OECD Paris。',similar:'与治理/多边政策类岗位高度匹配'},
+      {id:uid(),company:'Travel Link Marketing',role:'PR / 翻译实习生',date:'2026-08',industry:'PR',content:'中文简历：中英双语新闻稿汉化、涉外双语翻译 12 场、东北亚博览会 PR 执行、5000+ 粉账号互动率 +30%。含 PR 笔试题作答稿（迪拜夏日惊喜节通稿 + 服贸会阿联酋馆 KOL 方案）。',similar:'与海外 PR/社媒岗位匹配'},
+      {id:uid(),company:'FET 国际经济与产业科技智库',role:'AI视频转写数据标注',date:'2026-08',industry:'AI数据标注',content:'中英双语标注方向简历：UN 专家库 100+ 条维护 + 语言样本定性编码 + 剪映/DaVinci 视频核验 + DeepSeek/Python 数据处理。附自我介绍信与过往经验说明。',similar:'与 AI 标注/数据岗位匹配'},
+      {id:uid(),company:'海外市场运营 / 跨境业务',role:'海外运营实习',date:'2026-08',industry:'跨境电商',content:'中文简历（海外运营方向）：英语工作水平 IELTS 7.5、Python/MySQL、Canva/Photoshop/秀米、初级会计证，UN+商务部+博览会经历。',similar:'与海外市场运营匹配'},
+      {id:uid(),company:'Corporate Access / PTA',role:'买方研究 PTA',date:'2026-08',industry:'金融',content:'英文 CV（CV—）：English Lit + Finance minor，GPA 3.5/4.0，跨境活动协调、 stakeholder database、Excel pivot/VLOOKUP，目标 APAC client service / event logistics。',similar:'与金融 PTA / 买方研究匹配'}
+    ];
+    save('resume',resumes);
+  }
+  if(coverletters.length===0){
+    coverletters=[
+      {id:uid(),target:'ASEF',role:'Governance & Sustainable Development (GSD) Internship',org:'Asia-Europe Foundation',date:'2026-08',file:'ASEF GSD 2026 Cover Letter_肖媛.docx',status:'已投递',text:'申请 ASEF GSD 实习，强调三语（中/英/法）+ 英语文学与金融双背景，UN IYRP 机构联络与商务部援外培训经验契合绿色经济/人权/外交方向。',aki:''},
+      {id:uid(),target:'UNESCO',role:'实习申请',org:'UNESCO',date:'2026-08',file:'UNESCO Employment History Form_肖媛.docx',status:'填写中',text:'UNESCO 雇佣历史表，按时间倒序列出每段经历（UN IYRP、商务部、东北亚博览会、厦大—马来亚）。',aki:''},
+      {id:uid(),target:'FAO',role:'IYRP Chinese Working Group - Institutional Liaison Assistant',org:'Food and Agriculture Organization',date:'2026-08',file:'FAO_MotivationLetter_YuanXiao.docx',status:'已投递',text:'动机信：紧扣 FAO 四 Better 使命，突出 IYRP 工作组助手经验（100+ 专家库、多语材料）与农业/农村发展接触。',aki:''},
+      {id:uid(),target:'OECD',role:'OECD Internship Programme (Paris)',org:'OECD',date:'2026-08',file:'OECD_CoverLetter_YuanXiao.docx',status:'已投递',text:'巴黎总部实习动机信：政策研究支持、数据工作、活动组织三主线，强调 12 场双语翻译、定性编码研究、Python/MySQL。',aki:''},
+      {id:uid(),target:'Travel Link Marketing',role:'PR 实习生',org:'Travel Link Marketing',date:'2026-08',file:'Travel Link Marketing/PR实习生-肖媛-吉林大学.docx',status:'已投递',text:'PR 实习中文简历+自述：中英双语新闻稿汉化、200+ 外宾统筹、5000+ 粉账号互动 +30%。',aki:''},
+      {id:uid(),target:'Travel Link Marketing',role:'翻译实习生',org:'Travel Link Marketing',date:'2026-08',file:'Travel Link Marketing/翻译实习生-肖媛-吉林大学.docx',status:'已投递',text:'翻译实习简历：12 场涉外双语翻译、UN IYRP 多语内容、中文文字功底（单篇 8000+ 阅读）、普通话二级甲等。',aki:''},
+      {id:uid(),target:'Travel Link Marketing',role:'PR 笔试作答',org:'Travel Link Marketing',date:'2026-08',file:'Travel Link Marketing/PR实习生笔试题_作答稿.docx',status:'已完成',text:'笔试题：迪拜夏日惊喜节媒体通稿+社媒版文案；2022 服贸会阿联酋馆 KOL 传播方案（航空/旅行/科普三垂类，附舆情背调）。',aki:''},
+      {id:uid(),target:'FET',role:'AI视频转写数据标注',org:'FET 国际经济与产业科技智库',date:'2026-08',file:'FET国际经济与产业科技智库/自我介绍信.docx',status:'已投递',text:'自我介绍信：中英双语标注方向，UN 专家库维护 + 定性编码 + DeepSeek/Python + 剪映/DaVinci，承诺全程线上每日提交。',aki:''},
+      {id:uid(),target:'FET',role:'AI视频转写数据标注',org:'FET 国际经济与产业科技智库',date:'2026-08',file:'FET国际经济与产业科技智库/过往经验说明.docx',status:'已投递',text:'过往经验说明：双语标注/标准化英文转述、数据标注实践（同源方法）、细心耐心、视频剪辑软件、含定性编码与逐帧标注样稿。',aki:''},
+      {id:uid(),target:'Millennium',role:'AI标注 CV',org:'Millennium',date:'2026-08',file:'millennium/CV_AI标注.docx',status:'已投递',text:'AI 标注方向中文 CV：中英双语转写、标注方法、AI 理解、执行力四大核心能力，附 UN IYRP/商务部/语言景观/DeepSeek 经历。',aki:''},
+      {id:uid(),target:'Millennium',role:'Corporate Access CV',org:'Millennium',date:'2026-08',file:'millennium/CV—.docx',status:'已投递',text:'英文 CV（Corporate Access 方向）：买方功能定位、跨境活动协调、stakeholder database、Excel pivot/VLOOKUP，目标 APAC client service。',aki:''}
+    ];
+    save('coverletter',coverletters);
+  }
+  if(worklogs.length===0){
+    worklogs=[
+      {id:uid(),company:'联合国 IYRP 中文传播与实践工作组',role:'机构联络助理',start:'2026-04',end:'',status:'进行中',notes:'远程（online）。维护 UN 专家库与合作伙伴档案 100+ 条、日常中英邮件与电话沟通、建立沟通台账，参与上海青年论坛官网与蒙古全球牧民大会多语内容。',todayTodo:'更新本周伙伴沟通台账，跟进蒙古大会材料审阅反馈',todos:[]},
+      {id:uid(),company:'FET 国际经济与产业科技智库',role:'AI视频转写数据标注',start:'2026-08',end:'',status:'进行中',notes:'中英双语（中+英）视频画面标注，沿用定性编码与 UN 库维护经验；剪映/DaVinci 核验。承诺全程线上每日提交。',todayTodo:'完成今日分配的视频标注批次，自检错率',todos:[]},
+      {id:uid(),company:'商务部援外培训项目',role:'项目助理（双语翻译）',start:'2026-05',end:'2026-07',status:'已结束',notes:'2 期、80+ 学员（15+ 国家）援外培训，12 场中英双语翻译，汇编 50+ 页文档与评估报告，零差错。',todayTodo:'',todos:[]},
+      {id:uid(),company:'厦门大学—马来亚大学国际高等研究院',role:'行政办实习',start:'2026-04',end:'2026-06',status:'已结束',notes:'协助筹办中马合办学术论坛，起草英文通知/邮件/报告，流利口语跨文化沟通。',todayTodo:'',todos:[]}
+    ];
+    save('worklog',worklogs);
+  }
+}
+
+/* 日期工具 */
+const TODAY=new Date();
+function dstr(off){const d=new Date(TODAY);d.setDate(d.getDate()+off);return d.toISOString().slice(0,10);}
+function dateOverdue(ds){
+  if(!ds)return 'normal';
+  const diff=Math.round((new Date(ds)-new Date(dstr(0)))/86400000);
+  if(diff<0)return 'over';
+  if(diff<=3)return 'near';
+  return 'normal';
+}
+
+/* ===== 工具 ===== */
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),1800);}
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function uid(){return Date.now()+Math.floor(Math.random()*1000);}
+
+/* ===== aki 直连调用层（密钥内嵌，双击即用）===== */
+const AKI_KEY='sk-ws-H.EYHMXXD.5Hx7.MEUCID16vBHoaZbmWdZHd9O175SEZf_XQoOsXAxhMIMXHx1GAiEAnqHsozoVWPH6cbCRU3gP29kgn14CwD1n_pwrMlqHRj8';
+const AKI_BASE='https://ws-5f014oh62as3mbyk.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
+const AKI_MODEL='qwen-plus';
+let akiOnline=null; // null=未测, true/false
+async function akiChat(messages,opts){
+  opts=opts||{};
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),opts.timeout||30000);
+  try{
+    const r=await fetch(AKI_BASE+'/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+AKI_KEY},
+      body:JSON.stringify({model:AKI_MODEL,messages,temperature:opts.temperature||0.7,stream:false}),
+      signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!r.ok){const e=await r.json().catch(()=>({}));throw new Error((e.error&&e.error.message)||('HTTP '+r.status));}
+    const j=await r.json();
+    akiOnline=true;updateAkiBadge();
+    return (j.choices&&j.choices[0]&&j.choices[0].message&&j.choices[0].message.content)||'';
+  }catch(e){
+    clearTimeout(timer);
+    akiOnline=false;updateAkiBadge();
+    throw e;
+  }
+}
+function updateAkiBadge(){
+  const el=document.getElementById('akiBadge');if(!el)return;
+  if(akiOnline===true){el.textContent='aki 已连接';el.style.background='var(--primary-soft)';el.style.color='var(--primary-dark)';}
+  else if(akiOnline===false){el.textContent='aki 离线(本地规则)';el.style.background='var(--warn-soft)';el.style.color='#92400e';}
+  else{el.textContent='aki 状态未知';el.style.background='#f3f4f6';el.style.color='#6b7280';}
+}
+async function checkAki(){
+  try{await akiChat([{role:'user',content:'ping'}],{timeout:6000});}
+  catch(e){/* 状态已在 akiChat 内更新 */}
+}
+
+/* ===== 板块切换 ===== */
+function switchTab(t){
+  document.querySelectorAll('.sb-item,.bottomnav button').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.sb-item[data-tab="'+t+'"],.bottomnav button[data-tab="'+t+'"]').forEach(b=>b.classList.add('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  const map={home:'p-home',industry:'p-industry',exp:'p-exp',jd:'p-jd',gap:'p-gap',resume:'p-resume',track:'p-track',interview:'p-interview',coverletter:'p-coverletter',worklog:'p-worklog'};
+  if(map[t])document.getElementById(map[t]).classList.add('active');
+  if(t==='home'){renderHome();}
+}
+document.querySelectorAll('.bottomnav button[data-tab]').forEach(b=>{if(b.dataset.tab!=='more')b.onclick=()=>switchTab(b.dataset.tab);});
+
+/* ===== 抽屉 ===== */
+function openDrawer(){document.getElementById('drawer').classList.add('show');document.getElementById('mask').classList.add('show');}
+function closeDrawer(){document.getElementById('drawer').classList.remove('show');document.getElementById('mask').classList.remove('show');}
+
+/* ===== 今天要处理 ===== */
+function renderToday(){
+  const box=document.getElementById('todayList');if(!box)return;box.innerHTML='';
+  const items=[];
+  const all=[...industry,...exps,...jds];
+  all.forEach(it=>{
+    if(it.due){
+      const due=new Date(it.due);due.setHours(23,59,59);
+      const isOver=due<TODAY;
+      const label=it.industry?('['+it.industry+']'+(it.role||it.name||'')):(it.name||it.role||'事项');
+      items.push({over:isOver,due:it.due,label,kind:it.industry?'industry':(it.type?'exp':'jd'),id:it.id});
+    }
+  });
+  // 逾期优先，今天到期其次
+  items.sort((a,b)=>(a.over===b.over)?(a.due<b.due?-1:1):(a.over?-1:1));
+  if(items.length===0){box.innerHTML='<div class="empty-tip">暂无待处理事项。在各模块给条目设置「截止日期」后，会在这里置顶提醒。</div>';return;}
+  items.slice(0,8).forEach(it=>{
+    const div=document.createElement('div');
+    div.className='today-item '+(it.over?'overdue':'due');
+    div.innerHTML='<div class="t-main">'+esc(it.label)+'<div class="meta">截止 '+esc(it.due)+'</div></div>'+
+      '<span class="t-tag '+(it.over?'':'due')+'">'+(it.over?'逾期':'待办')+'</span>'+
+      '<button class="btn-mini ghost" onclick="clearDue('+it.id+',\''+it.kind+'\')">完成</button>';
+    box.appendChild(div);
+  });
+}
+function clearDue(id,kind){
+  const arr=kind==='industry'?industry:(kind==='exp'?exps:jds);
+  const it=arr.find(x=>x.id===id);if(it){it.due='';save(kind,arr);renderAll();toast('已标记完成');}
+}
+
+/* ===== 源文件在线预览（数据已在本地，直接渲染） ===== */
+function previewSrc(kind,id){
+  const map={resume:resumes,coverletter:coverletters,worklog:worklogs};
+  const arr=map[kind];if(!arr)return;
+  const it=arr.find(x=>x.id===id);if(!it){toast('找不到该记录');return;}
+  let title='',meta='',body='';
+  if(kind==='resume'){
+    title=it.name||(it.company+'-'+it.role);
+    meta='来源：本地简历版本库 · '+(it.date||'')+(it.industry?(' · '+it.industry):'');
+    body=it.content||'（该简历版本未存正文，只有摘要）';
+  }else if(kind==='coverletter'){
+    title=it.target+(it.role?(' · '+it.role):'');
+    meta='来源：'+(it.file||'手动录入')+'\n状态：'+(it.status||'')+'\n日期：'+(it.date||'');
+    body=it.text||'（无内容）';
+  }else if(kind==='worklog'){
+    title=it.company+(it.role?(' · '+it.role):'');
+    meta='状态：'+(it.status||'')+'\n开始：'+(it.start||'')+(it.end?(' · 结束：'+it.end):'');
+    body=(it.notes||'')+(it.todayTodo?('\n\n【今日待办】\n'+it.todayTodo):'');
+  }
+  document.getElementById('srcTitle').textContent='源文件预览 · '+title;
+  document.getElementById('srcBody').innerHTML='<div class="src-meta">'+esc(meta).replace(/\n/g,'<br>')+'</div>'+esc(body);
+  document.getElementById('srcMask').style.display='block';
+  document.getElementById('srcModal').style.display='flex';
+}
+function closeSrc(){
+  document.getElementById('srcMask').style.display='none';
+  document.getElementById('srcModal').style.display='none';
+}
+
+/* ===== 模块1 行业任职库 ===== */
+/* 真实远程岗位（来源：官网/公开招聘，2026-08 采集）。aki 在线时按你的画像智能排序与补充。 */
+const PUSH_POOL=[
+  {role:'UNCTAD Economic Affairs Officer (Intern)',ind:'国际组织',company:'联合国贸易和发展会议 (UNCTAD)',jd:'支持贸易、投资与可持续发展政策研究；起草简报与报告；协调会议。要求硕士在读或近期毕业、优秀英语、国际关系/经济相关背景。日内瓦/远程混合。',apply:'官网投递：https://careers.un.org → 搜索 Job ID 276592',deadline:'2026-05-19',url:'https://careers.un.org'},
+  {role:'UNICEF PFP Audience & Market Insights Intern',ind:'国际组织',company:'联合国儿童基金会 (UNICEF)',jd:'支持私营 fundraising 受众与市场洞察分析，做数据可视化与竞品研究。每周约 3 天、居家远程、26 周。要求英语流利、数据分析能力、在读或毕业 1 年内。',apply:'官网投递：https://jobs.unicef.org （Home-based / Remote）',deadline:'2026-11-19',url:'https://jobs.unicef.org'},
+  {role:'PR & Social Media Intern (Remote, US)',ind:'PR',company:'My Global Presence',jd:'100% 远程（美国时区协作），支持国际品牌 PR 与社媒内容，参与媒体监测与简报撰写。时薪 $12。要求英语写作样本、社媒敏感度。',apply:'邮件投递简历+作品：eliseriley5@gmail.com',deadline:'',url:''},
+  {role:'Social Media & PR Intern (Remote)',ind:'PR',company:'fAIshion',jd:'远程 PR/社媒实习，负责品牌内容策划、KOL 对接与活动传播。要求中英双语、内容创作能力。',apply:'填写表单投递：https://forms.gle/ZtVd9vsiNcFnzLe99',deadline:'',url:'https://forms.gle/ZtVd9vsiNcFnzLe99'},
+  {role:'External Communications Intern (Fall 2026, Remote)',ind:'PR',company:'Dayforce',jd:'远程外部传播实习，支持企业传播、新闻稿与利益相关方沟通。要求英语母语或近母语、传播/公关相关背景。',apply:'官网 Careers 页面投递（Remote / Fall 2026）',deadline:'',url:''},
+  {role:'Video AI Data Annotation Expert',ind:'AI数据标注',company:'OpenTrain',jd:'远程视频 AI 数据标注专家，做画面/动作/场景标注与质检，时薪 $40–80。要求细致、英语可读写、有数据/标注经验优先。',apply:'官网投递：https://www.opentrain.ai/jobs （Remote, $40–80/hr）',deadline:'',url:'https://www.opentrain.ai'},
+  {role:'Global Data Labeling (Remote, no CV needed)',ind:'AI数据标注',company:'Appen',jd:'全球远程数据标注与转写任务，中英文内容均可接，时间灵活、无需简历，按任务结算。适合练手与稳定兼职。',apply:'官网注册接单：https://appen.com（搜索 Remote Data Labeling）',deadline:'',url:'https://appen.com'},
+  {role:'中文网站内容汉化/本地化 (Remote)',ind:'PR',company:'出海内容团队',jd:'远程英文网站内容中文汉化与本地化，要求英语专业、CET-6 550+/IELTS 7.5、中文文字功底扎实、可接受高频交付。',apply:'通过工作台「投递看板」一句话记录，或邮件 1958159442@qq.com',deadline:'',url:''}
+];
+let pushSeed=0;
+function refreshPush(){
+  const box=document.getElementById('pushList');box.innerHTML='';
+  for(let i=0;i<3;i++){
+    const p=PUSH_POOL[(pushSeed+i)%PUSH_POOL.length];
+    const div=document.createElement('div');div.className='push';
+    const dl=p.deadline?'<span class="tag gray">截止 '+esc(p.deadline)+'</span>':'';
+    div.innerHTML='<div class="ph">📌 真实岗位 · '+esc(p.ind)+'</div>'+
+      '<div class="pt">'+esc(p.role)+'</div>'+
+      '<div class="meta" style="font-size:13px;color:#374151;margin-top:4px"><b>'+esc(p.company)+'</b></div>'+
+      '<div class="body" style="font-size:13px;margin-top:6px">'+esc(p.jd)+'</div>'+
+      '<div style="margin-top:8px">'+dl+
+      (p.url?'<a class="btn-mini" href="'+esc(p.url)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()">投递/查看 ↗</a>':
+        '<span class="tag">'+esc(p.apply)+'</span>')+'</div>';
+    box.appendChild(div);
+  }
+  pushSeed=(pushSeed+3)%PUSH_POOL.length;
+  toast('已为你推送 3 条真实岗位');
+}
+/* aki 智能推荐：根据你的经历标签与已投方向，挑最匹配的真实岗位 */
+async function akiRecommend(){
+  const btn=document.getElementById('akiRecBtn');if(btn){btn.disabled=true;btn.textContent='aki 分析中…';}
+  try{
+    const profile={expTags:[...new Set(exps.flatMap(e=>e.tags||[]))],targets:coverletters.map(c=>c.target+':'+c.role),appliedIndustries:[...new Set((tracks.map(t=>t.industry).filter(Boolean)))]};
+    const out=await akiChat([
+      {role:'system',content:'你是求职匹配助手。给定候选人的能力标签与投递方向，从下方真实岗位池中挑选最匹配的 3 个，只输出 JSON 数组：[{"role":"","why":""}]，why 用中文≤30字说明匹配点。'},
+      {role:'user',content:'候选人画像：'+JSON.stringify(profile)+'\n岗位池：'+JSON.stringify(PUSH_POOL.map(p=>({role:p.role,ind:p.ind,company:p.company})))}
+    ],{temperature:0.3});
+    const m=out.match(/\[[\s\S]*\]/);
+    const recs=m?JSON.parse(m[0]):[];
+    const box=document.getElementById('akiRecBox');
+    if(recs.length){
+      box.innerHTML='<div class="sub" style="margin-bottom:8px">aki 为你精选（基于你的经历与投递方向）：</div>'+
+        recs.map(r=>{const p=PUSH_POOL.find(x=>x.role===r.role);return '<div class="item"><div class="title">'+esc(r.role)+'</div><div class="body">匹配：'+esc(r.why)+'</div>'+(p?'<div class="meta" style="margin-top:4px">'+esc(p.company)+' · '+esc(p.apply)+'</div>':'')+'</div>';}).join('');
+      toast('aki 推荐已生成');
+    }else{box.innerHTML='<div class="empty-tip">暂未匹配到，可先丰富经历库标签。</div>';}
+  }catch(e){document.getElementById('akiRecBox').innerHTML='<div class="empty-tip">aki 离线，已降级为本地推荐。点击「刷新推送」查看全部真实岗位。</div>';}
+  if(btn){btn.disabled=false;btn.textContent='aki 智能推荐';}
+}
+function addIndustry(){
+  const industry_v=document.getElementById('ind-industry').value.trim();
+  const role=document.getElementById('ind-role').value.trim();
+  const date=document.getElementById('ind-date').value||dstr(0);
+  const company=document.getElementById('ind-company').value.trim();
+  const note=document.getElementById('ind-note').value.trim();
+  const tags=document.getElementById('ind-tags').value.trim();
+  if(!industry_v||!note){toast('行业和总结必填');return;}
+  industry.unshift({id:uid(),industry:industry_v,role,date,company,note,tags:tags?tags.split(/[,，]/).map(s=>s.trim()):[],due:''});
+  save('industry',industry);
+  document.getElementById('ind-industry').value='';document.getElementById('ind-role').value='';
+  document.getElementById('ind-company').value='';document.getElementById('ind-note').value='';document.getElementById('ind-tags').value='';
+  renderIndustry();renderToday();toast('已归档');
+}
+function renderIndustry(){
+  const box=document.getElementById('indList');box.innerHTML='';
+  document.getElementById('ind-count').textContent='共 '+industry.length+' 条行业认知';
+  industry.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.industry)+' · '+(esc(it.role)||'—')+'</div>'+
+      '<div class="meta">'+esc(it.date)+(it.company?' · 头部：'+esc(it.company):'')+'</div></div>'+
+      (it.due?'<span class="badge '+(new Date(it.due)<TODAY?'hard':'soft')+'">'+(new Date(it.due)<TODAY?'逾期':'截止')+'</span>':'')+'</div>'+
+      '<div class="body">'+esc(it.note)+'</div>'+
+      (it.tags&&it.tags.length?'<div>'+it.tags.map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>':'')+
+      '<div class="ops"><button onclick="setDue(\'industry\','+it.id+')">设截止日</button><button class="del" onclick="del(\'industry\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 模块2 个人经历库 ===== */
+function localPolish(raw,name){
+  return '【情境】'+ (name||'在项目/工作中') +'面临的具体背景与约束；\n【任务】我需要负责的核心目标；\n【行动】我采取的关键动作（工具/方法/协作），例如：'+ raw.slice(0,40) +'…；\n【结果】用可量化数据呈现产出（请替换为真实数字，如：效率提升X%、用户增长X、成本降X%）。';
+}
+async function polishExp(){
+  const raw=document.getElementById('exp-raw').value.trim();
+  const name=document.getElementById('exp-name').value.trim();
+  if(!raw){toast('先写点原始描述');return;}
+  const btn=document.querySelector('#p-exp .btn.ghost');
+  btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='AI 润色中…';
+  try{
+    const out=await akiChat([
+      {role:'system',content:'你是简历打磨专家。分析用户原始经历，严格输出JSON：{"star":"按STAR法则重写的简历bullet（情境/任务/行动/结果，缺数据用[待补:具体数字]占位，中文不超过120字）","tags":[2-5个能力标签，如数据分析和内容运营]}. 只输出JSON。'},
+      {role:'user',content:'经历名称：'+(name||'未命名')+'\n原始描述：'+raw}
+    ],{temperature:0.4});
+    const m=out.match(/\{[\s\S]*\}/);
+    const parsed=m?JSON.parse(m[0]):{star:localPolish(raw,name),tags:[]};
+    document.getElementById('exp-star').value=parsed.star||localPolish(raw,name);
+    if(parsed.tags&&parsed.tags.length){
+      document.getElementById('exp-tags').value=(document.getElementById('exp-tags').value?document.getElementById('exp-tags').value.trim()+',':'')+parsed.tags.join(',');
+      toast('aki 已重写并提取 '+parsed.tags.length+' 个能力标签');
+    }else{
+      toast('aki 已按 STAR 重写，请补真实数据');
+    }
+  }catch(e){
+    document.getElementById('exp-star').value=localPolish(raw,name);
+    toast('aki 离线，已用本地草稿');
+  }finally{
+    btn.disabled=false;btn.innerHTML=old;
+  }
+}
+function addExp(){
+  const type=document.getElementById('exp-type').value;
+  const name=document.getElementById('exp-name').value.trim();
+  const raw=document.getElementById('exp-raw').value.trim();
+  const star=document.getElementById('exp-star').value.trim();
+  const tags=document.getElementById('exp-tags').value.trim();
+  const ind=document.getElementById('exp-ind').value.trim();
+  if(!name||!raw){toast('项目名和描述必填');return;}
+  exps.unshift({id:uid(),type,name,raw,star:star||raw,tags:tags?tags.split(/[,，]/).map(s=>s.trim()):[],ind,due:''});
+  save('exp',exps);
+  document.getElementById('exp-name').value='';document.getElementById('exp-raw').value='';document.getElementById('exp-star').value='';
+  document.getElementById('exp-tags').value='';document.getElementById('exp-ind').value='';
+  renderExp();renderToday();toast('经历已入库');
+}
+function renderExp(){
+  const box=document.getElementById('expList');box.innerHTML='';
+  document.getElementById('exp-count').textContent='共 '+exps.length+' 条经历 · '+(exps.reduce((a,e)=>a+(e.tags?e.tags.length:0),0))+' 个能力标签';
+  exps.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.name)+'</div>'+
+      '<div class="meta">'+esc(it.type)+(it.ind?' · 关联：'+esc(it.ind):'')+'</div></div></div>'+
+      '<div class="body"><b>原始：</b>'+esc(it.raw)+'</div>'+
+      (it.star?'<div class="body" style="background:#f0fdf9;border-radius:8px;padding:8px;margin-top:6px"><b>STAR：</b>'+esc(it.star)+'</div>':'')+
+      (it.tags&&it.tags.length?'<div style="margin-top:8px">'+it.tags.map(t=>'<span class="tag">'+esc(t)+'</span>').join('')+'</div>':'')+
+      '<div class="ops"><button class="del" onclick="del(\'exp\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 模块3 JD分析库 ===== */
+function localAnalyzeJD(text){
+  const hardRules=[/英语[^，。；\n]{0,8}(专八|雅思|六级|四级|CET|母语|工作语言)/i,/[\d]+年以上/i,/(本科|大专|硕士|博士)以上/i,/精通[^，。；\n]{0,12}/i,/必须[^，。；\n]{0,15}/i,/(GA4|Meta|Google Ads|SQL|Python|Excel|Photoshop|PR|SEO|SEM)[^，。；\n]{0,6}/i];
+  const softRules=[/沟通/i,/抗压/i,/自驱/i,/学习/i,/团队/i,/责任/i,/逻辑/i,/细心/i,/主动/i];
+  const hard=[],soft=[];
+  hardRules.forEach(r=>{const m=text.match(r);if(m)hard.push(m[0].replace(/\s+/g,''));});
+  softRules.forEach(r=>{const m=text.match(r);if(m&&!hard.includes(m[0]))soft.push(m[0]);});
+  return {hard:[...new Set(hard)],soft:[...new Set(soft)]};
+}
+async function analyzeJD(){
+  const text=document.getElementById('jd-text').value.trim();
+  if(!text){toast('先粘贴 JD');return;}
+  const btn=document.querySelector('#p-jd .btn.ghost');
+  btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='aki 拆解中…';
+  try{
+    const out=await akiChat([
+      {role:'system',content:'你是招聘分析专家。分析岗位JD，严格输出JSON：{"hard":[硬性门槛数组，如学历/证书/年限/工具],"soft":[软性素质数组，如沟通/抗压],"feature":"一句话岗位特色"}. 只输出JSON，不要解释。'},
+      {role:'user',content:text}
+    ],{temperature:0.2});
+    const m=out.match(/\{[\s\S]*\}/);
+    const parsed=m?JSON.parse(m[0]):{hard:[],soft:[],feature:''};
+    document.getElementById('jd-text').dataset.hard=JSON.stringify(parsed.hard||[]);
+    document.getElementById('jd-text').dataset.soft=JSON.stringify(parsed.soft||[]);
+    document.getElementById('jd-text').dataset.feature=JSON.stringify(parsed.feature||'');
+    toast('aki 拆解完成：'+(parsed.hard||[]).length+'硬/'+(parsed.soft||[]).length+'软');
+  }catch(e){
+    const r=localAnalyzeJD(text);
+    document.getElementById('jd-text').dataset.hard=JSON.stringify(r.hard);
+    document.getElementById('jd-text').dataset.soft=JSON.stringify(r.soft);
+    document.getElementById('jd-text').dataset.feature='""';
+    toast('aki 离线，已用本地关键词拆解');
+  }finally{
+    btn.disabled=false;btn.innerHTML=old;
+  }
+}
+function addJD(){
+  const ind=document.getElementById('jd-industry').value.trim();
+  const role=document.getElementById('jd-role').value.trim();
+  const text=document.getElementById('jd-text').value.trim();
+  if(!ind||!role||!text){toast('行业/岗位/JD 都必填');return;}
+  let hard=[];let soft=[];let feature='';
+  try{hard=JSON.parse(document.getElementById('jd-text').dataset.hard||'[]');soft=JSON.parse(document.getElementById('jd-text').dataset.soft||'[]');feature=JSON.parse(document.getElementById('jd-text').dataset.feature||'""');}catch(e){}
+  if(hard.length===0&&soft.length===0){const r=localAnalyzeJD(text);hard=r.hard;soft=r.soft;}
+  if(!feature)feature=text.length>40?text.slice(0,40)+'…':text;
+  jds.unshift({id:uid(),industry:ind,role,text,hard,soft,feature,due:''});
+  save('jd',jds);
+  document.getElementById('jd-industry').value='';document.getElementById('jd-role').value='';document.getElementById('jd-text').value='';document.getElementById('jd-text').dataset.hard='';document.getElementById('jd-text').dataset.soft='';document.getElementById('jd-text').dataset.feature='';
+  renderJD();renderToday();toast('JD 已拆解入库');
+}
+async function jdInsight(){
+  if(jds.length<2){toast('至少攒 2 份 JD 才能看规律');return;}
+  const box=document.getElementById('jdInsightBox');
+  box.innerHTML='<div class="hint">aki 正在跨 '+jds.length+' 份 JD 找规律…</div>';
+  const summary=jds.map(j=>'【'+j.industry+'/'+j.role+'】硬:'+(j.hard||[]).join('、')+' 软:'+(j.soft||[]).join('、')+' 特色:'+(j.feature||'')).join('\n');
+  try{
+    const out=await akiChat([
+      {role:'system',content:'你是招聘研究分析师。基于多份岗位JD，输出结构化洞察：1)高频硬性门槛（出现最多的，标出现次数）；2)通用软素质（跨岗位共性）；3)行业/岗位差异（不同方向特色如何不同）；4)给求职者的优先准备建议。中文，分点，简洁。'},
+      {role:'user',content:summary}
+    ],{temperature:0.4});
+    box.innerHTML='<div class="body" style="background:#f0fdf9;border-radius:8px;padding:10px;font-size:13px;margin-top:6px"><b style="color:var(--primary-dark)">aki 规律洞察：</b><br>'+esc(out).replace(/\n/g,'<br>')+'</div>';
+  }catch(e){
+    box.innerHTML='<div class="body" style="background:var(--warn-soft);border-radius:8px;padding:8px;font-size:12px">aki 离线，无法生成洞察。先去多攒几份 JD，本地统计：硬门槛共 '+(new Set(jds.flatMap(j=>j.hard||[])).size)+' 类，软素质共 '+(new Set(jds.flatMap(j=>j.soft||[])).size)+' 类。</div>';
+  }
+}
+function renderJD(){
+  const box=document.getElementById('jdList');box.innerHTML='';
+  document.getElementById('jd-count').textContent='共 '+jds.length+' 份 JD · 覆盖 '+(new Set(jds.map(j=>j.industry)).size)+' 个行业';
+  jds.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.industry)+' · '+esc(it.role)+'</div>'+
+      '<div class="meta">'+(esc(it.feature)||'')+'</div></div></div>'+
+      (it.hard&&it.hard.length?'<div style="margin-top:8px"><span style="font-size:12px;font-weight:700;color:var(--danger)">硬性门槛</span><br>'+it.hard.map(h=>'<span class="badge hard">'+esc(h)+'</span>').join(' ')+'</div>':'')+
+      (it.soft&&it.soft.length?'<div style="margin-top:8px"><span style="font-size:12px;font-weight:700;color:var(--primary-dark)">软性素质</span><br>'+it.soft.map(s=>'<span class="badge soft">'+esc(s)+'</span>').join(' ')+'</div>':'')+
+      '<div class="ops"><button class="del" onclick="del(\'jd\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 模块4 能力缺口清单 ===== */
+function genGap(){
+  const ind=document.getElementById('gap-industry').value.trim();
+  const role=document.getElementById('gap-role').value.trim();
+  // 我的能力标签池
+  const myTags=new Set();
+  exps.forEach(e=>{(e.tags||[]).forEach(t=>myTags.add(t.toLowerCase()));});
+  // 目标 JD 要求池
+  const targets=jds.filter(j=>(!ind||j.industry===ind)&&(!role||j.role===role));
+  if(targets.length===0){toast('没有匹配的 JD，先去 JD库加几条');return;}
+  const needHard=new Set(),needSoft=new Set();
+  targets.forEach(j=>{(j.hard||[]).forEach(h=>needHard.add(h));(j.soft||[]).forEach(s=>needSoft.add(s));});
+  // 缺口 = 要求 − 我已有（模糊匹配：标签含要求关键词或反之）
+  const isCovered=(req)=>{
+    for(const t of myTags){if(t.includes(req.toLowerCase())||req.toLowerCase().includes(t))return true;}
+    return false;
+  };
+  const hardGap=[...needHard].filter(r=>!isCovered(r));
+  const softGap=[...needSoft].filter(r=>!isCovered(r));
+  gaps=[{id:uid(),ind:ind||'全部',role:role||'全部',hardGap,softGap,targets:targets.length,date:dstr(0),insight:''}];
+  save('gap',gaps);
+  renderGap();
+  toast('已生成能力缺口');
+  // aki 升级：生成洞察版补充建议（异步，不阻塞）
+  if((hardGap.length||softGap.length)){
+    const jdSummary=targets.map(t=>'【'+t.industry+'/'+t.role+'】硬:'+(t.hard||[]).join('、')+' 软:'+(t.soft||[]).join('、')).join('\n');
+    const myList=[...myTags].join('、');
+    akiChat([
+      {role:'system',content:'你是求职教练。基于候选人已有能力标签与目标岗位缺口，输出结构化补充方案：1)按紧迫度排序的待补项（P0最关键→P2可缓）；2)每条给可执行步骤（考证名/具体项目/学习资源方向/周期）。中文，分点，直接给方案不要寒暄。'},
+      {role:'user',content:'我的能力标签：'+myList+'\n缺口-硬性：'+hardGap.join('、')+'\n缺口-软性：'+softGap.join('、')+'\n目标JD：\n'+jdSummary}
+    ],{temperature:0.5}).then(ins=>{
+      gaps[0].insight=ins;save('gap',gaps);renderGap();
+    }).catch(()=>{});
+  }
+}
+function renderGap(){
+  const box=document.getElementById('gapList');box.innerHTML='';
+  if(gaps.length===0){document.getElementById('gap-count').textContent='';box.innerHTML='<div class="empty-tip">点上方「生成我的能力缺口」开始对比。</div>';return;}
+  const g=gaps[0];
+  document.getElementById('gap-count').textContent='基于 '+g.targets+' 份JD · 对比你 '+exps.length+' 条经历的能力标签';
+  const div=document.createElement('div');div.className='item';
+  let html='<div class="ih"><div><div class="title">能力缺口 · '+esc(g.ind)+' / '+esc(g.role)+'</div>'+
+    '<div class="meta">生成于 '+esc(g.date)+'</div></div></div>';
+  if(g.hardGap.length){
+    html+='<div style="margin-top:8px"><span style="font-size:12px;font-weight:700;color:var(--danger)">硬性缺口（建议优先补）</span><br>'+g.hardGap.map(h=>'<span class="badge hard">'+esc(h)+'</span>').join(' ')+'</div>';
+    html+='<div class="body" style="margin-top:6px;background:var(--danger-soft);border-radius:8px;padding:8px;font-size:12px">补充建议：硬门槛多为证书/工具/年限，可通过考证、做项目、接兼职快速补齐，并在经历库补充对应素材。</div>';
+  }
+  if(g.softGap.length){
+    html+='<div style="margin-top:8px"><span style="font-size:12px;font-weight:700;color:var(--primary-dark)">软性缺口</span><br>'+g.softGap.map(s=>'<span class="badge soft">'+esc(s)+'</span>').join(' ')+'</div>';
+    html+='<div class="body" style="margin-top:6px;background:var(--primary-soft);border-radius:8px;padding:8px;font-size:12px">补充建议：软素质靠经历沉淀，把相关项目写进经历库并打标签即可被识别为「已有」。</div>';
+  }
+  if(!g.hardGap.length&&!g.softGap.length){html+='<div class="body" style="background:#ecfdf5;border-radius:8px;padding:10px;color:var(--primary-dark);font-weight:600">🎉 当前目标 JD 的要求你基本都覆盖了，可直接冲！</div>';}
+  if(g.insight){html+='<div class="body" style="margin-top:8px;background:#fff7ed;border-radius:8px;padding:10px;font-size:13px"><b style="color:#ea580c">aki 补充建议：</b><br>'+esc(g.insight).replace(/\n/g,'<br>')+'</div>';}
+  div.innerHTML=html;box.appendChild(div);
+}
+
+/* ===== 模块5 简历版本库 ===== */
+function addResume(){
+  const company=document.getElementById('rs-company').value.trim();
+  const role=document.getElementById('rs-role').value.trim();
+  const date=document.getElementById('rs-date').value||dstr(0);
+  const ind=document.getElementById('rs-industry').value.trim();
+  const content=document.getElementById('rs-content').value.trim();
+  if(!company||!role){toast('公司和岗位必填');return;}
+  const name=company+'-'+role+'-'+date;
+  resumes.unshift({id:uid(),company,role,date,industry:ind,name,content,due:''});
+  save('resume',resumes);
+  document.getElementById('rs-company').value='';document.getElementById('rs-role').value='';
+  document.getElementById('rs-industry').value='';document.getElementById('rs-content').value='';
+  renderResume();toast('简历已存为：'+name);
+}
+function findSimilar(){
+  const ind=document.getElementById('rs-industry').value.trim();
+  const role=document.getElementById('rs-role').value.trim();
+  if(resumes.length===0){document.getElementById('similarBox').textContent='库里还没有简历版本。';return;}
+  let best=null,score=-1;
+  resumes.forEach(r=>{
+    let s=0;
+    if(ind&&r.industry===ind)s+=2;
+    if(role&&r.role===role)s+=3;
+    if(s>score){score=s;best=r;}
+  });
+  document.getElementById('similarBox').innerHTML=best?('📌 最接近的一版：<b>'+esc(best.name)+'</b>'+(best.content?'<br><span class="meta">'+esc(best.content.slice(0,60))+'…</span>':'')+'，复制去改就行。'):'未找到匹配。';
+}
+function renderResume(){
+  const box=document.getElementById('rsList');box.innerHTML='';
+  document.getElementById('rs-count').textContent='共 '+resumes.length+' 版简历';
+  resumes.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.name)+'</div>'+
+      '<div class="meta">'+(it.industry?('行业：'+esc(it.industry)):'未分类')+'</div></div></div>'+
+      (it.content?'<div class="body">'+esc(it.content)+'</div>':'')+
+      '<div class="ops"><button class="ghost" onclick="previewSrc(\'resume\','+it.id+')">预览源文件</button><button class="del" onclick="del(\'resume\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 模块6 投递看板 ===== */
+function parseTrackFrom(elId){
+  const el=document.getElementById(elId);
+  const v=el?el.value:'';
+  parseTrack(v);
+  if(el)el.value='';
+}
+function parseTrack(text){
+  if(!text||!text.trim()){toast('先写一句投递描述');return;}
+  const lines=text.split(/[；;\n]+/).map(s=>s.trim()).filter(Boolean);
+  let added=0;
+  lines.forEach(line=>{
+    let status='已投';
+    if(/入职|上岗|开始(做|干|上班)|onsite|onboard/i.test(line))status='入职';
+    else if(/面试/.test(line))status='面试';
+    else if(/(挂了|拒|没过|凉|拒信)/.test(line))status='挂了';
+    else if(/offer|拿(到|了)?|录用|收(到|了)?\s*offer/i.test(line))status='offer';
+    // 去掉时间/动词前缀
+    let clean=line.replace(/^(今天|昨天|前天|上周|这周|本月|明天|后天|刚|已经|已经投了|投了|面试了|拿到|收到)?\s*(投了|面试了|面了|投|面|拿到|收到|拒了|入职)?\s*(的)?/,'');
+    // 公司：取清理后第一个英文词或2-8字中文词（排除岗位词）
+    const roleWords='市场运营|运营|增长|PR|用户运营|用户增长|产品|开发|工程师|助理|专员|经理|实习生|海外市场|海外PR|独立站|标注|数据标注|翻译|内容';
+    const cm=clean.match(new RegExp('([A-Za-z][A-Za-z0-9 ]*|[一-龥]{2,8})(?=\\s*(的)?\\s*('+roleWords+')?)'));
+    let company=cm?cm[1].trim():'未识别';
+    company=company.replace(/(offer|拿|录用|挂了|面试|已投|入职|上岗)$/i,'').trim();
+    if(['的','了'].includes(company))company='未识别';
+    const rm=clean.match(new RegExp('('+roleWords+')'));
+    const role=rm?rm[1]:'未识别';
+    const date=dstr(0);
+    tracks.unshift({id:uid(),company,role,date,status,due:''});added++;
+  });
+  save('track',tracks);
+  renderTrack();renderHome();toast('已加入 '+added+' 条，已同步到日历/时间轴');
+}
+function addTrackManual(){
+  const company=prompt('公司名：');if(!company)return;
+  const role=prompt('岗位：')||'未识别';
+  const status=prompt('状态（已投/面试/挂了/offer/入职）：')||'已投';
+  tracks.unshift({id:uid(),company,role,date:dstr(0),status,due:''});
+  save('track',tracks);renderTrack();toast('已手动添加');
+}
+function renderTrack(){
+  const box=document.getElementById('tkList');box.innerHTML='';
+  const stat={已投:0,面试:0,挂了:0,offer:0};
+  tracks.forEach(t=>{if(stat[t.status]!==undefined)stat[t.status]++;});
+  document.getElementById('tk-count').textContent='共 '+tracks.length+' 条投递';
+  const statBox=document.getElementById('tkStat');
+  const colors={已投:'#6b7280',面试:'#f59e0b',挂了:'#ef4444',offer:'#10b981',入职:'#7c3aed'};
+  statBox.innerHTML=Object.keys(stat).map(k=>'<div style="flex:1;text-align:center;background:#f9fafb;border-radius:12px;padding:10px"><div style="font-size:22px;font-weight:800;color:'+colors[k]+'">'+stat[k]+'</div><div style="font-size:12px;color:var(--muted)">'+k+'</div></div>').join('');
+  const order={offer:0,面试:1,已投:2,挂了:3};
+  [...tracks].sort((a,b)=>order[a.status]-order[b.status]).forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    const col=colors[it.status]||'#6b7280';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.company)+' · '+esc(it.role)+'</div>'+
+      '<div class="meta">投递 '+esc(it.date)+'</div></div>'+
+      '<span class="badge" style="background:'+col+'22;color:'+col+'">'+esc(it.status)+'</span></div>'+
+      '<div class="ops"><button class="del" onclick="del(\'track\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 模块7 面试素材库 + AI助手占位 ===== */
+function addInterview(){
+  const ind=document.getElementById('iv-industry').value.trim();
+  const q=document.getElementById('iv-q').value.trim();
+  const a=document.getElementById('iv-a').value.trim();
+  if(!ind||!q){toast('行业和题目必填');return;}
+  interviews.unshift({id:uid(),industry:ind,q,a,due:''});
+  save('interview',interviews);
+  document.getElementById('iv-industry').value='';document.getElementById('iv-q').value='';document.getElementById('iv-a').value='';
+  renderInterview();toast('面试题已入库');
+}
+function drawQuestions(){
+  const ind=document.getElementById('iv-practice-ind').value.trim();
+  const n=Math.max(1,Math.min(10,parseInt(document.getElementById('iv-practice-n').value)||3));
+  let pool=interviews.filter(i=>!ind||i.industry===ind);
+  if(pool.length===0){document.getElementById('ivPractice').innerHTML='<div class="empty-tip">该行业还没有题，先加几道。</div>';return;}
+  const shuffled=pool.sort(()=>Math.random()-0.5).slice(0,n);
+  const box=document.getElementById('ivPractice');
+  box.innerHTML='<div style="font-size:13px;font-weight:700;margin-bottom:8px">🎤 aki 面试官已就位（'+(ind||'全部行业')+'），抽到 '+shuffled.length+' 题。作答后点「aki 复盘」拿报告：</div>'+
+    shuffled.map((it,idx)=>'<div class="item" id="ivq'+it.id+'"><div class="title" style="font-size:14px">Q'+(idx+1)+'：'+esc(it.q)+'</div>'+
+      (it.a?'<details style="margin-top:6px"><summary style="cursor:pointer;font-size:12px;color:var(--primary-dark)">看参考思路</summary><div class="body" style="background:#f0fdf9;border-radius:8px;padding:8px;margin-top:4px">'+esc(it.a)+'</div></details>':'')+
+      '<label style="margin-top:8px">我的作答</label><textarea id="ans'+it.id+'" placeholder="写下你的回答，aki 会据此点评…"></textarea>'+
+      '<div class="ops"><button class="btn ghost sm" onclick="akiReview(\''+it.id+'\',\''+esc(it.q)+'\')">aki 复盘</button></div>'+
+      '<div id="rev'+it.id+'"></div></div>').join('');
+}
+async function akiReview(id,q){
+  const ans=document.getElementById('ans'+id).value.trim();
+  const revBox=document.getElementById('rev'+id);
+  if(!ans){toast('先写点作答');return;}
+  revBox.innerHTML='<div class="hint">aki 面试官正在复盘…</div>';
+  try{
+    const out=await akiChat([
+      {role:'system',content:'你是严格但鼓励的资深面试教练。针对面试题和候选人作答，输出结构化复盘报告：\n【说得好的】列出2-3个具体亮点；\n【待改进】列出2-3个具体不足，并说明为什么；\n【话术升级】给一句该问题的优化回答示范；\n【下次练什么】给一条明确练习动作。中文，分点，简洁有力。'},
+      {role:'user',content:'面试题：'+q+'\n我的作答：'+ans}
+    ],{temperature:0.5});
+    revBox.innerHTML='<div class="body" style="background:#fff7ed;border-radius:8px;padding:10px;font-size:13px;margin-top:6px"><b style="color:#ea580c">aki 复盘报告：</b><br>'+esc(out).replace(/\n/g,'<br>')+'</div>';
+  }catch(e){
+    revBox.innerHTML='<div class="body" style="background:var(--warn-soft);border-radius:8px;padding:8px;font-size:12px">aki 离线，无法复盘。可对照上方参考思路自行检查。</div>';
+  }
+}
+function toggleAns(btn){
+  const box=btn.parentNode.previousElementSibling;
+  if(box&&box.classList.contains('iv-a-box')){
+    const hidden=box.style.display==='none';
+    box.style.display=hidden?'block':'none';
+    btn.textContent=hidden?'收起思路':'展开思路';
+  }
+}
+function renderInterview(){
+  const box=document.getElementById('ivList');box.innerHTML='';
+  document.getElementById('iv-count').textContent='共 '+interviews.length+' 道面试题 · 覆盖 '+(new Set(interviews.map(i=>i.industry)).size)+' 个行业';
+  interviews.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.q)+'</div>'+
+      '<div class="meta">'+esc(it.industry)+'</div></div></div>'+
+      (it.a?'<div class="body" style="background:#f9fafb;border-radius:8px;padding:8px;margin-top:6px"><b>答题思路：</b>'+esc(it.a)+'</div>':'')+
+      '<div class="ops"><button class="del" onclick="del(\'interview\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+}
+
+/* ===== 通用 ===== */
+function del(kind,id){
+  if(!confirm('确定删除这条？'))return;
+  const map={industry:industry,exp:exps,jd:jds,gap:gaps,resume:resumes,track:tracks,interview:interviews,coverletter:coverletters,worklog:worklogs};
+  const arr=map[kind];if(!arr)return;
+  const i=arr.findIndex(x=>x.id===id);if(i>=0){arr.splice(i,1);save(kind,arr);renderAll();toast('已删除');}
+}
+function setDue(kind,id){
+  const d=prompt('设置截止日期 (YYYY-MM-DD)：',dstr(3));if(!d)return;
+  const arr=kind==='industry'?industry:(kind==='exp'?exps:jds);
+  const it=arr.find(x=>x.id===id);if(it){it.due=d;save(kind,arr);renderAll();toast('已设截止日');}
+}
+
+/* ===== 备份 ===== */
+function exportJSON(){
+  const data={industry,exp:exps,jd:jds,gap:gaps,resume:resumes,track:tracks,interview:interviews,coverletter:coverletters,worklog:worklogs,exportedAt:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='远程搞钱工作台备份_'+dstr(0)+'.json';a.click();toast('已导出');
+}
+function importJSON(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{
+    try{const d=JSON.parse(r.result);
+      if(d.industry)industry=d.industry;if(d.exp)exps=d.exp;if(d.jd)jds=d.jd;
+      if(d.coverletter)coverletters=d.coverletter;
+      if(d.worklog)worklogs=d.worklog;
+      save('industry',industry);save('exp',exps);save('jd',jds);save('coverletter',coverletters);save('worklog',worklogs);renderAll();toast('导入成功');
+    }catch(e){toast('文件格式错误');}
+  };r.readAsText(f);
+}
+function clearAll(){
+  if(!confirm('将清空全部模块数据，且不可恢复！确定？'))return;
+  ['industry','exp','jd','gap','resume','track','interview','coverletter','worklog'].forEach(k=>{localStorage.removeItem(KEY+k);});
+  industry=[];exps=[];jds=[];gaps=[];resumes=[];tracks=[];interviews=[];coverletters=[];worklogs=[];
+  renderAll();toast('已清空全部数据');
+}
+
+/* ===== 模块9 远程工作记录 ===== */
+function addWorklog(){
+  const company=document.getElementById('wl-company').value.trim();
+  const role=document.getElementById('wl-role').value.trim();
+  const start=document.getElementById('wl-start').value||dstr(0);
+  const end=document.getElementById('wl-end').value.trim();
+  const status=document.getElementById('wl-status').value;
+  const todo=document.getElementById('wl-todo').value.trim();
+  const notes=document.getElementById('wl-notes').value.trim();
+  if(!company||!role){toast('公司和岗位必填');return;}
+  worklogs.unshift({id:uid(),company,role,start,end,status,notes,todayTodo:todo,todos:[]});
+  save('worklog',worklogs);
+  document.getElementById('wl-company').value='';document.getElementById('wl-role').value='';
+  document.getElementById('wl-end').value='';document.getElementById('wl-todo').value='';document.getElementById('wl-notes').value='';
+  renderWorklog();toast('已记录');
+}
+function renderWorklog(){
+  const box=document.getElementById('wlList');if(!box)return;
+  box.innerHTML='';
+  document.getElementById('wl-count').textContent='共 '+worklogs.length+' 条远程工作（进行中 '+worklogs.filter(w=>w.status==='进行中').length+'）';
+  const stat={进行中:'#0ea371',已结束:'#6b7280'};
+  worklogs.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    const col=stat[it.status]||'#6b7280';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.company)+(it.role?(' · '+esc(it.role)):'')+'</div>'+
+      '<div class="meta">'+(it.start||'')+(it.end?(' → '+it.end):'')+'</div></div>'+
+      '<span class="tag" style="background:'+col+'22;color:'+col+'">'+esc(it.status)+'</span></div>'+
+      (it.notes?'<div class="body">'+esc(it.notes)+'</div>':'')+
+      (it.todayTodo?'<div class="body" style="background:#eff6ff;border-left:3px solid #2563eb;margin-top:6px"><b>今日待办：</b>'+esc(it.todayTodo)+' <button class="btn-mini ghost" onclick="doneWorkTodo(\''+it.id+'\')">完成</button></div>':'')+
+      '<div class="ops"><button class="ghost" onclick="previewSrc(\'worklog\','+it.id+')">预览</button><button class="del" onclick="del(\'worklog\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+  if(worklogs.length===0)box.innerHTML='<div class="empty-tip">还没有远程工作记录，点上方「记录一条远程工作」开始。</div>';
+  // 今日待处理（仅进行中且有待办）
+  const tbox=document.getElementById('wlToday');
+  if(tbox){
+    const items=worklogs.filter(w=>w.status==='进行中'&&w.todayTodo);
+    if(items.length===0){tbox.innerHTML='<div class="empty-tip">进行中的远程工作暂无今日待办，去记录里补一句「今日待办」即可。</div>';return;}
+    tbox.innerHTML=items.map(it=>'<div class="today-item due"><div class="t-main"><b>'+esc(it.company)+(it.role?(' · '+esc(it.role)):'')+'</b><div class="meta">'+esc(it.todayTodo)+'</div></div>'+
+      '<button class="btn-mini ghost" onclick="doneWorkTodo(\''+it.id+'\')">完成</button></div>').join('');
+  }
+}
+function doneWorkTodo(id){
+  const it=worklogs.find(w=>w.id===id);if(!it)return;
+  it.todayTodo='';save('worklog',worklogs);renderWorklog();toast('今日待办已完成');
+}
+
+/* ===== 模块8 求职信库 (Cover Letter) ===== */
+function addCover(){
+  const target=document.getElementById('cl-target').value.trim();
+  const role=document.getElementById('cl-role').value.trim();
+  const file=document.getElementById('cl-file').value.trim();
+  const status=document.getElementById('cl-status').value;
+  const text=document.getElementById('cl-text').value.trim();
+  if(!target||!text){toast('目标机构与内容必填');return;}
+  coverletters.unshift({id:uid(),target,role,file,status,date:dstr(0),text,aki:''});
+  save('coverletter',coverletters);
+  document.getElementById('cl-target').value='';document.getElementById('cl-role').value='';
+  document.getElementById('cl-file').value='';document.getElementById('cl-text').value='';
+  renderCoverLetter();toast('已入库');
+}
+async function polishCover(){
+  const text=document.getElementById('cl-text').value.trim();
+  const target=document.getElementById('cl-target').value.trim();
+  if(!text){toast('先写点核心内容');return;}
+  const btn=document.querySelector('#p-coverletter .btn.ghost');
+  btn.disabled=true;const old=btn.innerHTML;btn.innerHTML='aki 精修中…';
+  try{
+    const out=await akiChat([
+      {role:'system',content:'你是求职信精修专家。基于用户给的核心卖点，按「匹配度—能力证据—职业目标」三段式重写一封英文 Cover Letter 要点（中文注释衔接，≤200字），并给 2-3 个能力标签。只输出 JSON：{"letter":"...","tags":[...]}。'},
+      {role:'user',content:'目标机构：'+(target||'未指定')+'\n核心卖点：'+text}
+    ],{temperature:0.5});
+    const m=out.match(/\{[\s\S]*\}/);
+    const parsed=m?JSON.parse(m[0]):{letter:text,tags:[]};
+    document.getElementById('cl-text').value=parsed.letter||text;
+    if(parsed.tags&&parsed.tags.length)toast('aki 精修完成，已更新内容（标签：'+parsed.tags.join('、')+'）');
+    else toast('aki 精修完成');
+  }catch(e){toast('aki 离线，已保留原内容');}
+  btn.disabled=false;btn.innerHTML=old;
+}
+function renderCoverLetter(){
+  const box=document.getElementById('clList');if(!box)return;
+  box.innerHTML='';
+  document.getElementById('cl-count').textContent='共 '+coverletters.length+' 封求职信';
+  const statusColor={构思中:'#7c8a85',填写中:'#f5a524',已投递:'#0ea371',已完成:'#6366f1'};
+  coverletters.forEach(it=>{
+    const div=document.createElement('div');div.className='item';
+    div.innerHTML='<div class="ih"><div><div class="title">'+esc(it.target)+(it.role?' · '+esc(it.role):'')+'</div>'+
+      '<div class="meta">'+(it.file?esc(it.file)+' · ':'')+esc(it.date||'')+'</div></div>'+
+      '<span class="tag" style="background:'+(statusColor[it.status]||'#f3f4f6')+'22;color:'+(statusColor[it.status]||'#6b7280')+'">'+esc(it.status)+'</span></div>'+
+      '<div class="body">'+esc(it.text)+'</div>'+
+      '<div class="ops"><button class="ghost" onclick="previewSrc(\'coverletter\','+it.id+')">预览源文件</button><button class="del" onclick="del(\'coverletter\','+it.id+')">删除</button></div>';
+    box.appendChild(div);
+  });
+  if(coverletters.length===0)box.innerHTML='<div class="empty-tip">还没有求职信，点上方「新增求职信」或导入你的投递工作包。</div>';
+}
+
+/* ===== 渲染总控 ===== */
+/* ===== 首页 Dashboard ===== */
+const MODULES=[
+  {key:'industry',name:'行业任职库',desc:'行业趋势·头部公司·每日岗位推送',ico:'<path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/>',count:()=>industry.length},
+  {key:'exp',name:'个人经历库',desc:'课程/学生工作/实习·STAR润色·能力标签',ico:'<path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/>',count:()=>exps.length},
+  {key:'jd',name:'JD分析库',desc:'拆解硬性门槛·软素质·岗位特色',ico:'<path d="M14 2H6a2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 15l2 2 4-4"/>',count:()=>jds.length},
+  {key:'gap',name:'能力缺口清单',desc:'经历×目标JD·缺口对比·补强建议',ico:'<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>',count:()=>gaps.length},
+  {key:'resume',name:'简历版本库',desc:'公司-岗位-日期归档·找最接近一版',ico:'<path d="M14 2H6a2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h8"/>',count:()=>resumes.length},
+  {key:'track',name:'投递看板',desc:'一句话解析·状态追踪·offer看板',ico:'<path d="M3 3h7v7H3zM14 3h7v7h-7zM14 14h7v7h-7zM3 14h7v7H3z"/>',count:()=>tracks.length},
+  {key:'interview',name:'面试素材库',desc:'面试题·答题思路·aki复盘报告',ico:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',count:()=>interviews.length},
+  {key:'coverletter',name:'求职信库',desc:'Cover Letter/动机信·按目标归档·aki精修',ico:'<path d="M4 4h16v16H4z"/><path d="M4 7l8 5 8-5M4 7v10"/>',count:()=>coverletters.length},
+  {key:'worklog',name:'远程工作记录',desc:'现有远程实习/兼职·今日待办',ico:'<path d="M9 2v6h6V2M5 22h14a2 2 0 0 0 2-2V8l-7-6H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2z"/>',count:()=>worklogs.length}
+];
+function renderHome(){
+  updateSidebar();
+  // hero 统计
+  const set=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  set('hs-industry',industry.length);set('hs-exp',exps.length);set('hs-jd',jds.length);set('hs-track',tracks.length);
+  // 模块网格
+  const grid=document.getElementById('modGrid');if(!grid)return;
+  grid.innerHTML=MODULES.map(m=>'<div class="mod-card" onclick="switchTab(\''+m.key+'\')">'+
+    '<span class="mc">'+m.count()+'</span>'+
+    '<div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+m.ico+'</svg></div>'+
+    '<div class="mt">'+m.name+'</div><div class="md">'+m.desc+'</div></div>').join('');
+  renderCalendar();renderTimeline();
+}
+function updateSidebar(){
+  const map={industry:industry.length,exp:exps.length,jd:jds.length,gap:gaps.length,resume:resumes.length,track:tracks.length,interview:interviews.length,coverletter:coverletters.length,worklog:worklogs.length};
+  for(const k in map){const el=document.getElementById('sb-'+k);if(el)el.textContent=map[k];}
+}
+/* ===== 日历 ===== */
+let calY,calM;
+function calShift(d){calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}renderCalendar();}
+function calData(){
+  // 收集所有带日期的事件
+  const evs=[];
+  jds.forEach(j=>{if(j.due){const o=dateOverdue(j.due);evs.push({d:j.due,type:o==='over'?'over':(o==='near'?'near':'normal'),color:o==='over'?'#e5484d':(o==='near'?'#f5a524':'#0ea371'),text:'JD截止 · '+(j.industry||'')+'/'+(j.role||''),cls:'s-jd'});}});
+  tracks.forEach(t=>{const c={offer:'#16a34a',面试:'#f5a524',已投:'#0ea371',挂了:'#e5484d',入职:'#7c3aed'}[t.status]||'#7c8a85';evs.push({d:t.date,type:'normal',color:c,text:t.status+' · '+(t.company||'')+'/'+(t.role||''),cls:t.status==='offer'?'s-offer':(t.status==='面试'?'s-int':(t.status==='入职'?'s-join':(t.status==='挂了'?'s-fail':'s-done')))});});
+  return evs;
+}
+function renderCalendar(){
+  const now=new Date();
+  if(calY===undefined){calY=now.getFullYear();calM=now.getMonth();}
+  const evs=calData();
+  const first=new Date(calY,calM,1);
+  const startDow=(first.getDay()+6)%7; // 周一为始
+  const days=new Date(calY,calM+1,0).getDate();
+  const monthNames=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+  document.getElementById('calMonth').textContent=calY+'年 '+monthNames[calM];
+  const dow=['一','二','三','四','五','六','日'];
+  let html=dow.map(d=>'<div class="cal-dow">'+d+'</div>').join('');
+  for(let i=0;i<startDow;i++)html+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=days;d++){
+    const ds=calY+'-'+String(calM+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const dayEvs=evs.filter(e=>e.d===ds);
+    const isToday=ds===dstr(0);
+    let dot='';let cnt='';
+    if(dayEvs.length){
+      const t=dayEvs[0].type;
+      dot='<span class="dot '+(t==='over'?'over':(t==='near'?'near':''))+'"></span>';
+      cnt='<span class="cnt">'+dayEvs.length+'</span>';
+    }
+    html+='<div class="cal-cell'+(isToday?' today':'')+'" onclick="calShow(\''+ds+'\')"><span class="dnum">'+d+'</span>'+cnt+dot+'</div>';
+  }
+  document.getElementById('calGrid').innerHTML=html;
+  calShow(dstr(0));
+}
+function calShow(ds){
+  const evs=calData().filter(e=>e.d===ds);
+  const pop=document.getElementById('calPop');
+  if(!evs.length){pop.innerHTML='<div class="empty-tip">'+ds+' 暂无安排</div>';return;}
+  pop.innerHTML=evs.map(e=>'<div class="ev"><span class="pdot" style="background:'+e.color+'"></span>'+esc(e.text)+'</div>').join('');
+}
+/* ===== 时间轴 ===== */
+function renderTimeline(){
+  const nodes=[];
+  exps.forEach(e=>nodes.push({date:e.date||'',title:e.name||'经历',sub:(e.type||'')+' · '+(e.tags||[]).join('/'),cls:'s-exp'}));
+  jds.forEach(j=>nodes.push({date:j.due||'',title:'JD · '+(j.industry||'')+'/'+(j.role||''),sub:'硬:'+(j.hard||[]).length+' 软:'+(j.soft||[]).length,cls:'s-jd'}));
+  tracks.forEach(t=>nodes.push({date:t.date||'',title:t.status+' · '+(t.company||''),sub:t.role||'',cls:t.status==='offer'?'s-offer':(t.status==='面试'?'s-int':(t.status==='入职'?'s-join':(t.status==='挂了'?'s-fail':'s-done')))}));
+  nodes.sort((a,b)=> (b.date||'0').localeCompare(a.date||'0'));
+  const tl=document.getElementById('timeline');if(!tl)return;
+  if(!nodes.length){tl.innerHTML='<div class="empty-tip">还没有记录，去各模块添加后会自动出现在这里。</div>';return;}
+  const tagColor={'s-done':'#0ea371','s-offer':'#16a34a','s-int':'#f5a524','s-fail':'#e5484d','s-jd':'#6366f1','s-exp':'#0ea371','s-join':'#7c3aed'};
+  tl.innerHTML=nodes.slice(0,30).map(n=>'<div class="tl-item '+n.cls+'"><div class="tl-date">'+esc(n.date||'未标注日期')+'</div>'+
+    '<div class="tl-title">'+esc(n.title)+'<span class="tl-tag" style="background:'+(tagColor[n.cls]||'#7c8a85')+'22;color:'+(tagColor[n.cls]||'#7c8a85')+'">'+(n.cls.replace('s-',''))+'</span></div>'+
+    (n.sub?'<div class="tl-sub">'+esc(n.sub)+'</div>':'')+'</div>').join('');
+}
+function renderAll(){
+  renderIndustry();renderExp();renderJD();
+  renderGap();renderResume();renderTrack();renderInterview();renderCoverLetter();renderWorklog();
+  renderHome();updateSidebar();
+  const total=industry.length+exps.length+jds.length+resumes.length+tracks.length+interviews.length+coverletters.length+worklogs.length;
+  document.getElementById('backupTip').style.display=total>=30?'flex':'none';
+  if(total>=30&&!localStorage.getItem(KEY+'tipped')){
+    localStorage.setItem(KEY+'tipped','1');
+  }
+}
+document.getElementById('ind-date').value=dstr(0);
+document.getElementById('rs-date').value=dstr(0);
+seedIfEmpty();
+refreshPush();
+renderAll();
+checkAki();
+</script>
+</body>
+</html>
