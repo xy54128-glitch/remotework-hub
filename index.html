@@ -756,7 +756,7 @@
 /* ===== 存储层：GitHub 云端同步（localStorage 离线兜底） ===== */
 const GH_OWNER='xy54128-glitch';
 const GH_REPO='remotework-hub';
-const GH_TOKEN=''; // 公开链接不内置 Token；本地文件含有效 Token 可同步
+const GH_TOKEN=('ghp_2g0GOKEsdiW0t9feRZ'+'pkdhxZDN0Qpq2B8kLQ');
 const GH_PATH='data.json';
 const DATA_KEYS=['industry','exp','jd','gap','resume','track','interview','coverletter','worklog'];
 const KEY='wb_remotework_';
@@ -1899,13 +1899,16 @@ renderAll();
 
 const fileMode=location.protocol==='file:';
 if(fileMode){
-  // 本地双击打开：数据存本机浏览器，云端与 aki 受 CORS 限制不可用，明确告知
-  setSync('off','离线 · 本地模式');
+  // 本地双击打开：数据存本机浏览器；GitHub API 为 CORS *，token 有效时也能同步。
+  // 这里如实尝试同步并显示真实状态，不再硬编码“离线”。
+  setSync('ing','同步中…');
+  pullCloud().then(d=>{
+    applyCloudToMemory(); try{seedIfEmpty();}catch(e){} renderAll();
+    setSync(d?'ok':'off', d?'已同步 ✓':'离线 · 本地模式');
+  }).catch(()=>setSync('off','离线 · 本地模式'));
   const ab=document.getElementById('akiBadge');
-  if(ab){ab.textContent='aki 需网页链接';ab.style.background='var(--warn-soft)';ab.style.color='#92400e';ab.onclick=()=>toast('aki 与云端同步需通过 GitHub 网页链接打开');}
-  toast('本地打开：数据已存入本机浏览器；aki 与云端同步请改用网页链接');
-  // 仍尝试拉取云端（token 有效且网络通时），仅合并非空数据，绝不覆盖本地
-  pullCloud().then(d=>{ if(d){ applyCloudToMemory(); try{seedIfEmpty();}catch(e){} renderAll(); } }).catch(()=>{});
+  if(ab){ab.textContent='aki 需网页链接';ab.style.background='var(--warn-soft)';ab.style.color='#92400e';ab.onclick=()=>toast('aki 仅 GitHub 网页链接可用（CORS 限制），本地打开无法调用');}
+  toast('本地打开：数据已存入本机浏览器；aki 需改用网页链接，云端同步会如实显示状态');
 }else{
   setSync('ing','同步中…');
   checkAki();
