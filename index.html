@@ -293,7 +293,7 @@
     小爱远程实习兼职赚钱工作台
   </div>
   <div class="sync sync-off" id="syncBadge" title="云端同步状态（GitHub 数据）"><span class="dot"></span>离线 · 本地模式</div>
-  <div class="sync" id="akiBadge" title="aki 直连状态（密钥已内嵌，打开即在线）" style="cursor:default">aki 状态未知</div>
+  <div class="sync" id="akiBadge" title="aki 直连状态（密钥已内嵌）" style="cursor:pointer" onclick="checkAki()">aki 可用 · 点此验证</div>
 </header>
 
 <div class="wrap">
@@ -727,13 +727,14 @@
       <button class="btn ghost sm" onclick="exportJSON()">导出 JSON</button>
       <button class="btn ghost sm" onclick="document.getElementById('imp').click()">导入恢复</button>
       <input id="imp" type="file" accept="application/json" style="display:none" onchange="importJSON(this)">
+      <button class="btn ghost sm" onclick="restoreDemo()">恢复示例数据</button>
       <button class="btn danger sm" onclick="clearAll()">清空示例/全部</button>
     </div>
     <div class="hint">导入支持上千条，直接覆盖合并；清空需二次确认。</div>
   </div>
   <div class="card" style="box-shadow:none;border:1px solid var(--line)">
     <h3 style="font-size:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z"/><path d="M12 6v6l4 2"/></svg>关于</h3>
-    <div class="sub">小爱远程实习兼职赚钱工作台<br>行业任职库 / 个人经历库 / JD分析库 / 能力缺口 / 简历版本库 / 投递看板 / 面试素材库<br>真 AI（aki / 阿里云百炼 qwen-plus）已内嵌密钥，<b>双击网页即用、打开即在线</b>。<br>若网络不通自动降级本地规则，不崩。⚠️ 密钥在文件内，分享链接前请知悉。</div>
+    <div class="sub">小爱远程实习兼职赚钱工作台<br>行业任职库 / 个人经历库 / JD分析库 / 能力缺口 / 简历版本库 / 投递看板 / 面试素材库<br>真 AI（aki / 阿里云百炼 qwen-plus）已内嵌密钥。<br>⚠️ 通过 <b>GitHub 网页链接</b>打开时 aki 与云端同步自动启用；<b>直接双击本地文件</b>时 aki 与云端同步受浏览器跨域限制不可用，仅本地数据可用。<br>若网络不通自动降级本地规则，不崩。⚠️ 密钥在文件内，分享链接前请知悉。</div>
   </div>
 </aside>
 
@@ -755,13 +756,13 @@
 /* ===== 存储层：GitHub 云端同步（localStorage 离线兜底） ===== */
 const GH_OWNER='xy54128-glitch';
 const GH_REPO='remotework-hub';
-const GH_TOKEN='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';
+const GH_TOKEN=''; // 公开链接不内置 Token；本地文件含有效 Token 可同步
 const GH_PATH='data.json';
 const DATA_KEYS=['industry','exp','jd','gap','resume','track','interview','coverletter','worklog'];
 const KEY='wb_remotework_';
 
 function setSync(state,txt){const el=document.getElementById('syncBadge');if(el){el.className='sync sync-'+state;el.innerHTML=txt;}}
-function load(k,def){try{const v=localStorage.getItem(KEY+k);return v?JSON.parse(v):def;}catch(e){return def;}}
+function load(k,def){try{const v=localStorage.getItem(KEY+k);const p=v?JSON.parse(v):def;return Array.isArray(p)?p:def;}catch(e){return def;}}
 function saveLocal(k,v){localStorage.setItem(KEY+k,JSON.stringify(v));}
 let ghSha=null;
 let syncing=false;
@@ -784,7 +785,7 @@ async function ghPut(data){
 }
 // 云端优先：启动时拉取，失败则本地；改动后写云端+本地
 async function pullCloud(){
-  try{const d=await ghGet();if(d){DATA_KEYS.forEach(k=>{if(d[k]!==undefined){saveLocal(k,d[k]);}});return d;} }
+  try{const d=await ghGet();if(d){DATA_KEYS.forEach(k=>{if(Array.isArray(d[k])&&d[k].length>0){saveLocal(k,d[k]);}});return d;} }
   catch(e){console.warn('pull failed',e);}
   return null;
 }
@@ -828,6 +829,14 @@ function seedIfEmpty(){
     save('worklog',worklogs);
   }
 }
+// 把 localStorage 中的云端数据同步回内存变量
+function applyCloudToMemory(){
+  industry=load('industry',[]);exps=load('exp',[]);jds=load('jd',[]);gaps=load('gap',[]);
+  resumes=load('resume',[]);tracks=load('track',[]);interviews=load('interview',[]);
+  coverletters=load('coverletter',[]);worklogs=load('worklog',[]);
+}
+// 手动恢复示例数据（仅填补为空的分类，不覆盖已有数据）
+function restoreDemo(){try{seedIfEmpty();}catch(e){console.warn('seed error',e);}applyCloudToMemory();renderAll();toast('已恢复示例数据（仅补全空白分类）');}
 
 /* 日期工具 */
 const TODAY=new Date();
@@ -849,7 +858,7 @@ function uid(){return Date.now()+Math.floor(Math.random()*1000);}
 const AKI_KEY='sk-ws-H.EYLLDYD.Sqh8.MEUCIC6nFbnrysqTsRvt4HYtiOowoK2oNjn2oiULv5ocIJpwAiEAuObXWAHjix42rCzrkpLJiTWsa2hRsMWfDSdr_4ie4KE';
 const AKI_BASE='https://ws-5f014oh62as3mbyk.cn-beijing.maas.aliyuncs.com/compatible-mode/v1';
 const AKI_MODEL='qwen-plus';
-let akiOnline=null; // null=未测, true/false
+let akiOnline=true; // 乐观默认在线（接口实测可用），首次失败才标离线
 async function akiChat(messages,opts){
   opts=opts||{};
   const ctrl=new AbortController();
@@ -872,12 +881,11 @@ async function akiChat(messages,opts){
 }
 function updateAkiBadge(){
   const el=document.getElementById('akiBadge');if(!el)return;
-  if(akiOnline===true){el.textContent='aki 已连接';el.style.background='var(--primary-soft)';el.style.color='var(--primary-dark)';}
+  if(akiOnline===true){el.textContent='aki 可用';el.style.background='var(--primary-soft)';el.style.color='var(--primary-dark)';}
   else if(akiOnline===false){el.textContent='aki 离线(本地规则)';el.style.background='var(--warn-soft)';el.style.color='#92400e';}
-  else{el.textContent='aki 状态未知';el.style.background='#f3f4f6';el.style.color='#6b7280';}
 }
 async function checkAki(){
-  try{await akiChat([{role:'user',content:'ping'}],{timeout:6000});}
+  try{await akiChat([{role:'user',content:'ping'}],{timeout:8000});akiOnline=true;updateAkiBadge();}
   catch(e){/* 状态已在 akiChat 内更新 */}
 }
 
@@ -1885,24 +1893,33 @@ function renderAll(){
 }
 document.getElementById('ind-date').value=dstr(0);
 document.getElementById('rs-date').value=dstr(0);
-seedIfEmpty();
+try{seedIfEmpty();}catch(e){console.warn('seed error',e);}
 refreshPush();
-setSync('ing','同步中…');
 renderAll();
-checkAki();
-// 启动后从云端拉取最新数据并刷新
-pullCloud().then(d=>{
-  if(d){
-    industry=d.industry||[];exps=d.exp||[];jds=d.jd||[];gaps=d.gap||[];
-    resumes=d.resume||[];tracks=d.track||[];interviews=d.interview||[];
-    coverletters=d.coverletter||[];worklogs=d.worklog||[];
-    renderAll();setSync('ok','已同步 ✓');
-  }else{
-    setSync('off','离线 · 本地模式');
-  }
-}).catch(()=>setSync('off','离线 · 点此重试'));
+
+const fileMode=location.protocol==='file:';
+if(fileMode){
+  // 本地双击打开：数据存本机浏览器，云端与 aki 受 CORS 限制不可用，明确告知
+  setSync('off','离线 · 本地模式');
+  const ab=document.getElementById('akiBadge');
+  if(ab){ab.textContent='aki 需网页链接';ab.style.background='var(--warn-soft)';ab.style.color='#92400e';ab.onclick=()=>toast('aki 与云端同步需通过 GitHub 网页链接打开');}
+  toast('本地打开：数据已存入本机浏览器；aki 与云端同步请改用网页链接');
+  // 仍尝试拉取云端（token 有效且网络通时），仅合并非空数据，绝不覆盖本地
+  pullCloud().then(d=>{ if(d){ applyCloudToMemory(); try{seedIfEmpty();}catch(e){} renderAll(); } }).catch(()=>{});
+}else{
+  setSync('ing','同步中…');
+  checkAki();
+  pullCloud().then(d=>{
+    if(d){ applyCloudToMemory(); try{seedIfEmpty();}catch(e){} renderAll(); setSync('ok','已同步 ✓'); }
+    else{ setSync('off','离线 · 点此重试'); }
+  }).catch(()=>setSync('off','离线 · 点此重试'));
+}
 document.getElementById('syncBadge').style.cursor='pointer';
-document.getElementById('syncBadge').onclick=()=>{setSync('ing','同步中…');pullCloud().then(d=>{if(d){industry=d.industry||[];exps=d.exp||[];jds=d.jd||[];gaps=d.gap||[];resumes=d.resume||[];tracks=d.track||[];interviews=d.interview||[];coverletters=d.coverletter||[];worklogs=d.worklog||[];renderAll();setSync('ok','已同步 ✓');}else{setSync('off','离线 · 点此重试');}}).catch(()=>setSync('off','离线 · 点此重试'));};
+document.getElementById('syncBadge').onclick=()=>{
+  if(location.protocol==='file:'){toast('本地模式：数据已在本机；同步与 aki 请用网页链接');return;}
+  setSync('ing','同步中…');
+  pullCloud().then(d=>{ if(d){applyCloudToMemory();try{seedIfEmpty();}catch(e){}renderAll();setSync('ok','已同步 ✓');} else{setSync('off','离线 · 点此重试');} }).catch(()=>setSync('off','点此重试'));
+};
 </script>
 </body>
 </html>
