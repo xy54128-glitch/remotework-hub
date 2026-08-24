@@ -342,6 +342,15 @@
   .ver-card .actions{justify-content:flex-start;gap:8px;margin:0}
   .btn.danger{color:#e5484d;border-color:#f3c2c2;background:#fff}
   .btn.danger:hover{background:#fff1f1}
+  .rg-match-r.miss{color:#c0392b;font-weight:600}
+  .ver-modified{font-size:11px;font-weight:700;color:#ea580c;background:#fff7ed;border:1px solid #fed7aa;border-radius:20px;padding:1px 8px;margin-left:6px;white-space:nowrap}
+  .ver-chat-msgs{max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:6px 2px 10px}
+  .ver-msg{max-width:86%;padding:8px 11px;border-radius:12px;font-size:13px;line-height:1.55;white-space:pre-wrap;word-break:break-word}
+  .ver-msg.user{align-self:flex-end;background:var(--primary);color:#fff;border-bottom-right-radius:3px}
+  .ver-msg.ai{align-self:flex-start;background:#f1f5f9;color:#0f172a;border-bottom-left-radius:3px}
+  .ver-chat-input{display:flex;gap:8px;margin-top:8px;align-items:flex-end}
+  .ver-chat-input textarea{flex:1;min-height:44px;max-height:140px;resize:vertical;padding:9px 11px;border:1px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;line-height:1.45}
+  .ver-chat-input .btn{flex:none;min-height:44px}
 </style>
 </head>
 <body>
@@ -814,6 +823,12 @@
       <div class="sub">预览即最终版式，要点可直接点击编辑；改完点「导出 PDF」→ 打印窗口选「另存为 PDF」。</div>
       <div id="resumePreview"></div>
     </div>
+
+    <div class="card" id="rgCovCard" style="display:none">
+      <h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M21 12v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h11"/></svg>JD 要求对照</h3>
+      <div class="sub">aki 逐条检查：你这份简历有没有「答到」目标 JD 的每一条硬/软要求。绿勾=已体现，红叉=有缺口待补。</div>
+      <div id="rgJdCoverage"></div>
+    </div>
   </section>
 
   <!-- 模块11 简历版本库 -->
@@ -890,6 +905,24 @@
     <button class="x" onclick="closeSrc()">×</button>
   </div>
   <div class="modal-b" id="srcBody"></div>
+</div>
+
+<!-- 简历版本库 · 与 AI 对话修改弹窗 -->
+<div class="mask" id="verChatMask" onclick="closeVerChat()" style="z-index:70;display:none"></div>
+<div class="modal" id="verChatModal" style="display:none;max-width:660px">
+  <div class="modal-h">
+    <span id="verChatTitle">对话修改简历</span>
+    <span style="flex:1"></span>
+    <button class="btn ghost sm" onclick="applyVerChat()" style="margin-right:8px">应用到生成器</button>
+    <button class="x" onclick="closeVerChat()">×</button>
+  </div>
+  <div class="modal-b">
+    <div id="verChatMsgs" class="ver-chat-msgs"></div>
+    <div class="ver-chat-input">
+      <textarea id="verChatInput" placeholder="告诉 AI 你想改什么，例如：把第一段经历突出数据分析能力并量化成果；技能栏加上 Python / SQL；整体更贴合「市场营销」岗位。" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendVerChat();}"></textarea>
+      <button class="btn" id="verChatSend" onclick="sendVerChat()">发送</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -2262,7 +2295,8 @@ function renderRgenJd(){
 }
 function renderRgenMatch(){
   const box=document.getElementById('rgJdMatch');if(!box)return;
-  if(!rgenJd){box.innerHTML='';return;}
+  const cov=document.getElementById('rgCovCard');
+  if(!rgenJd){box.innerHTML='';if(cov)cov.style.display='none';return;}
   const j=jds.find(x=>String(x.id)===String(rgenJd));if(!j){box.innerHTML='';return;}
   const hard=(j.hard||[]).join('、');const soft=(j.soft||[]).join('、');const feat=j.feature||'';
   let h='<div class="rg-match-card"><div class="rg-match-t">目标 JD：'+(j.industry||'')+' / '+(j.role||'')+'</div>';
@@ -2309,11 +2343,78 @@ function renderVersion(){
   if(versions.length===0){box.innerHTML='<div class="rg-meta">还没有保存的简历版本。在「AI 简历生成」里生成简历后，点「保存到版本库」即可在这里留存多份版本（可按不同 JD / 语言区分）。</div>';return;}
   box.innerHTML=versions.map(v=>{
     const badge=v.lang==='en'?'EN':'中文';
-    return '<div class="ver-card"><div class="ver-top"><div class="ver-name">'+esc(v.name)+'</div><span class="ver-badge '+(v.lang==='en'?'en':'cn')+'">'+badge+'</span></div>'+
+    const mod=v.modified?'<span class="ver-modified">已 AI 修改</span>':'';
+    return '<div class="ver-card"><div class="ver-top"><div class="ver-name">'+esc(v.name)+mod+'</div><span class="ver-badge '+(v.lang==='en'?'en':'cn')+'">'+badge+'</span></div>'+
       '<div class="ver-meta">目标 JD：'+(v.jdName||'通用')+'　·　保存于 '+esc(v.date)+'　·　'+((v.expIds||[]).length)+' 段经历</div>'+
-      '<div class="actions"><button class="btn ghost sm" onclick="loadVersion('+v.id+')">载入生成器</button><button class="btn ghost sm danger" onclick="delVersion('+v.id+')">删除</button></div></div>';
+      '<div class="actions"><button class="btn ghost sm" onclick="loadVersion('+v.id+')">载入生成器</button><button class="btn ghost sm" onclick="openVerChat('+v.id+')">对话修改</button><button class="btn ghost sm danger" onclick="delVersion('+v.id+')">删除</button></div></div>';
   }).join('');
 }
+
+/* 简历版本库 · 与 AI 对话修改 */
+let verChatId=null;
+function openVerChat(id){
+  const v=versions.find(x=>x.id===id);if(!v){toast('版本不存在');return;}
+  verChatId=id; if(!v.chat)v.chat=[];
+  const t=document.getElementById('verChatTitle');if(t)t.textContent='对话修改 · '+v.name;
+  renderVerChat();
+  document.getElementById('verChatMask').style.display='block';
+  document.getElementById('verChatModal').style.display='block';
+  const inp=document.getElementById('verChatInput');if(inp)inp.focus();
+}
+function closeVerChat(){
+  verChatId=null;
+  const m=document.getElementById('verChatModal');const mk=document.getElementById('verChatMask');
+  if(m)m.style.display='none';if(mk)mk.style.display='none';
+}
+function renderVerChat(){
+  const box=document.getElementById('verChatMsgs');if(!box)return;
+  const v=versions.find(x=>x.id===verChatId);const msgs=v&&v.chat?v.chat:[];
+  if(msgs.length===0){box.innerHTML='<div class="rg-meta">还没有对话。直接告诉 AI 你想改什么，例如：「把第一段经历突出数据分析能力并量化成果」「技能栏加上 Python / SQL」「整体更贴合『市场营销』岗位」。AI 会直接改好这份简历版本。</div>';return;}
+  box.innerHTML=msgs.map(m=>'<div class="ver-msg '+(m.role==='user'?'user':'ai')+'">'+esc(m.content)+'</div>').join('');
+  box.scrollTop=box.scrollHeight;
+}
+async function sendVerChat(){
+  const v=versions.find(x=>x.id===verChatId);if(!v)return;
+  const inp=document.getElementById('verChatInput');const msg=(inp.value||'').trim();if(!msg)return;
+  inp.value='';
+  v.chat=v.chat||[];v.chat.push({role:'user',content:msg});renderVerChat();
+  const sendBtn=document.getElementById('verChatSend');if(sendBtn){sendBtn.disabled=true;sendBtn.textContent='…';}
+  const lang=v.lang||'cn';
+  const jd=v.jdId?jds.find(x=>String(x.id)===String(v.jdId)):null;
+  const entries=Object.keys(v.entries||{}).map(k=>{const e=v.entries[k];return {id:k,title:e.title,org:e.org,period:e.period,bullets:e.bullets};});
+  const sys=(lang==='en'
+    ?'You are a resume editor. The user gives you a current resume (a JSON list of experience entries) and a revision request in Chinese/English. Apply the requested change, keep all truthful facts, never invent numbers. Reply with a short natural-language note (1-2 sentences, in the users language) on what you changed, then on a NEW line output the FULL updated resume as JSON: {"entries":[{"id","title","org","period","bullets":[...]}]}. Keep every entry id; if the request is only a question, you may keep entries unchanged. No markdown fences.'
+    :'你是简历修改助手。用户提供当前简历（经历条目 JSON 列表）和一句中文修改要求。请按用户要求修改简历，保持事实真实、严禁编造数字。先写一句中文说明你改了什么，换行后输出修改后的完整简历 JSON：{"entries":[{"id":,"title":,"org":,"period":,"bullets":[...]}]}。保留所有条目 id；若只是提问，可保持 entries 不变。不要加 markdown 代码块标记。');
+  let usr='当前简历（针对 JD：'+(jd?((jd.industry||'')+'/'+(jd.role||'')):'通用')+'）：\n';
+  usr+='经历条目：'+JSON.stringify(entries)+'\n\n用户修改要求：'+msg;
+  try{
+    const out=await akiChat([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.5,timeout:45000});
+    const d=parseAkiJSON(out);
+    if(d&&d.entries){
+      const byId={};d.entries.forEach(e=>byId[String(e.id)]=e);
+      const newEntries={};
+      Object.keys(v.entries||{}).forEach(k=>{
+        const upd=byId[String(k)];
+        if(upd){newEntries[k]={type:(v.entries[k].type||''),title:upd.title!==undefined?upd.title:v.entries[k].title,org:upd.org!==undefined?upd.org:v.entries[k].org,period:upd.period!==undefined?upd.period:v.entries[k].period,bullets:Array.isArray(upd.bullets)&&upd.bullets.length?upd.bullets:v.entries[k].bullets};}
+        else{newEntries[k]=v.entries[k];}
+      });
+      d.entries.forEach(e=>{if(!newEntries[String(e.id)]){newEntries[String(e.id)]={type:'',title:e.title||'',org:e.org||'',period:e.period||'',bullets:e.bullets||[]};}});
+      v.entries=newEntries;v.modified=true;v.date=dstr(0);
+      const js=out.indexOf('{');const reply=js>0?out.slice(0,js).trim():'已按你的要求更新简历。';
+      v.chat.push({role:'ai',content:(reply||'已按你的要求更新简历。')});
+      save('version',versions);renderVersion();renderVerChat();toast('AI 已更新该简历版本');
+    }else{
+      v.chat.push({role:'ai',content:out.trim()||'（AI 未返回有效内容）'});
+      save('version',versions);renderVerChat();
+    }
+  }catch(e){
+    v.chat.push({role:'ai',content:'⚠️ aki 当前不可用（离线/超时），修改未应用。请稍后重试，或用「载入生成器」手动改。'});
+    save('version',versions);renderVerChat();
+  }finally{
+    if(sendBtn){sendBtn.disabled=false;sendBtn.textContent='发送';}
+  }
+}
+function applyVerChat(){if(verChatId){const id=verChatId;closeVerChat();loadVersion(id);}}
 function exportResumePDF(){window.print();}
 function parseAkiJSON(s){
   if(!s)return null;
@@ -2329,11 +2430,19 @@ async function polishResume(){
   const btn=document.getElementById('rgGenBtn');btn.disabled=true;btn.textContent='aki 润色中…';
   const payload=sel.map(e=>({id:e.id,type:e.type,name:e.name,date:e.date,raw:e.raw,tags:e.tags||[]}));
   const sys=(lang==='en'
-    ?'You are a senior resume copywriter. The user provides several raw experience entries (mostly in Chinese). Rewrite each into 2-4 strong, action-verb-led, quantified resume bullet points in professional English. Keep facts truthful; never invent numbers. Return ONLY JSON: {"entries":[{"id":number,"title":string,"org":string,"bullets":[string,...]}]}, id must match input. If a target JD is provided in the user message, tailor wording to showcase the required hard/soft competencies and reuse its terminology. No extra text.'
-    :'你是资深简历文案顾问。用户会提供若干段中文原始经历，请为每一段改写成 2–4 条精炼、动词开头、带量化结果的简历要点（bullet），保持事实真实，严禁编造数字。返回 ONLY JSON：{"entries":[{"id":数字,"title":字符串,"org":字符串,"bullets":[字符串,...]}]}，id 必须与输入一致。若用户消息中包含目标 JD，请优先使用 JD 的术语并突出对应能力。不要输出额外文字。');
+    ?'You are a senior resume STRATEGY consultant and copywriter, NOT a transcriber. The target JD is the spec the resume must answer. For EACH hard/soft requirement in the JD, pick the candidate\'s real experience that best proves that competency, and rewrite it into 2-4 strong, action-verb-led, quantified bullet points in professional English — reuse the JD\'s exact terminology. Place the most JD-relevant experiences first; de-emphasize or DROP experiences irrelevant to the JD (do NOT pad with unrelated items). NEVER invent numbers, roles, or experiences. Return ONLY JSON: {"entries":[{"id":number,"title":string,"org":string,"bullets":[string,...]}]}, id must match input. No extra text.'
+    :'你是资深简历策略顾问 + 文案，不是「经历搬运工」。目标 JD 是这份简历必须回答的「考题」。做法：1) 以用户提供的目标 JD 为唯一标准；2) 对 JD 的每一条硬性要求、软性要求，从候选人真实经历中挑出最能证明该能力的一段，改写成 2–4 条动词开头、带量化结果、并复用 JD 术语的简历要点，排在对应板块最前面；3) 与 JD 无关的经历大幅弱化或省略，不要为凑篇幅保留；4) 严禁编造数字、岗位、经历。只返回 JSON：{"entries":[{"id":数字,"title":字符串,"org":字符串,"bullets":[字符串,...]}]}，id 与输入一致。不要输出额外文字。');
   const jd=jds.find(x=>String(x.id)===String(rgenJd));
   let jdCtx='';
-  if(jd){jdCtx='\n\n目标岗位 JD（请让要点尽量贴合该岗位要求来措辞）：\n行业='+(jd.industry||'')+'；岗位='+(jd.role||'')+'；硬性要求='+((jd.hard||[]).join('、'))+'；软性要求='+((jd.soft||[]).join('、'))+'；岗位特色='+(jd.feature||'');}
+  if(jd){
+    const hardLines=(jd.hard||[]).map((h,i)=>(i+1)+'. '+h);
+    const softLines=(jd.soft||[]).map((s,i)=>(i+1)+'. '+s);
+    jdCtx='\n\n===== 目标 JD（这是简历必须逐条答到的「考题」）=====\n行业='+(jd.industry||'')+'\n岗位='+(jd.role||'')+
+      '\n【硬性要求】\n'+(hardLines.join('\n')||'（无）')+
+      '\n【软性要求】\n'+(softLines.join('\n')||'（无）')+
+      '\n【岗位特色】'+(jd.feature||'（无）')+
+      '\n\n请让简历要点逐条对应以上要求，并在 bullets 中显性体现这些能力关键词；无关经历后置或省略。';
+  }
   const user='语言：'+(lang==='en'?'English':'中文')+'\n经历：'+JSON.stringify(payload)+jdCtx;
   try{
     const out=await akiChat([{role:'system',content:sys},{role:'user',content:user}],{temperature:0.5,timeout:45000});
@@ -2345,7 +2454,9 @@ async function polishResume(){
         if(en.title)b.title=en.title; if(en.org)b.org=en.org;
         if(Array.isArray(en.bullets)&&en.bullets.length)b.bullets=en.bullets;
       });
-      renderResumePreview();toast('aki 已润色 '+data.entries.length+' 段经历');
+      renderResumePreview();toast('aki 已按 JD 重组并润色 '+data.entries.length+' 段经历');
+      if(jd){ generateCoverage(jd, data.entries); }
+      else { const c=document.getElementById('rgCovCard'); if(c)c.style.display='none'; }
     }else{throw new Error('返回格式异常');}
   }catch(e){
     sel.forEach(ev=>{
@@ -2357,6 +2468,32 @@ async function polishResume(){
     renderResumePreview();toast('aki 不可用，已用本地规则生成（联网后点「AI 润色」可升级）');
   }finally{
     btn.disabled=false;    btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M12 2l2.4 7.4H22l-6 4.3 2.3 7.3L12 16.7 5.7 21l2.3-7.3-6-4.3h7.6z"/></svg>aki AI 润色生成';
+  }
+}
+/* JD 要求对照：aki 逐条检查简历是否答到了每条硬/软要求（非阻塞，失败不影响简历） */
+async function generateCoverage(jd, entries){
+  const card=document.getElementById('rgCovCard');const box=document.getElementById('rgJdCoverage');
+  if(!card||!box||!jd)return;
+  card.style.display='block';
+  box.innerHTML='<div class="rg-match-card"><div class="rg-match-t">JD 要求对照生成中…</div></div>';
+  const reqs=[...(jd.hard||[]).map(h=>'硬性：'+h),...(jd.soft||[]).map(s=>'软性：'+s)];
+  if(reqs.length===0){box.innerHTML='<div class="rg-match-card"><div class="rg-match-r">该 JD 还没有结构化提取出硬/软要求，无法生成对照。可回到 JD 分析库补全要求。</div></div>';return;}
+  const sys='你是简历匹配度分析师。给定目标 JD 的若干要求和候选人的简历要点，逐条判断每条要求是否被简历覆盖。只返回 JSON：{"coverage":[{"req":string,"covered":true/false,"note":string}]}，note 用一句话说明简历中哪段经历/哪个要点体现了该要求，或说明缺口。不要额外文字。';
+  const usr='JD 要求：\n'+reqs.map((r,i)=>(i+1)+'. '+r).join('\n')+'\n\n简历要点（按经历）：\n'+JSON.stringify(entries.map(e=>({title:e.title,bullets:e.bullets})));
+  try{
+    const out=await akiChat([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.2,timeout:30000});
+    const d=parseAkiJSON(out);
+    if(d&&d.coverage&&d.coverage.length){
+      let h='<div class="rg-match-card"><div class="rg-match-t">JD 要求对照（AI 检查简历是否答到了每条要求）</div>';
+      d.coverage.forEach(c=>{
+        const ok=!!c.covered;
+        h+='<div class="rg-match-r '+(ok?'ok':'miss')+'">'+(ok?'✓':'✗')+' '+esc(c.req||'')+(c.note?('　— '+esc(c.note)):'')+'</div>';
+      });
+      h+='</div>';
+      box.innerHTML=h;
+    }else{box.innerHTML='<div class="rg-match-card"><div class="rg-match-r">对照生成异常，但简历已按 JD 组织好。可稍后重试。</div></div>';}
+  }catch(e){
+    box.innerHTML='<div class="rg-match-card"><div class="rg-match-r">JD 对照生成失败（aki 离线或超时），不影响简历本身。简历已按岗位要求组织。</div></div>';
   }
 }
 
