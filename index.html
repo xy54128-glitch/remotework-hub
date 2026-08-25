@@ -826,8 +826,9 @@
       <div class="actions no-print" style="justify-content:space-between;margin-bottom:6px">
         <h3 style="margin:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3h18v18H3z"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>简历预览</h3>
         <button class="btn" onclick="exportResumePDF()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>导出 PDF</button>
+        <button class="btn ghost" onclick="exportResumeDocx()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>导出 Word</button>
       </div>
-      <div class="sub">预览即最终版式，要点可直接点击编辑；改完点「导出 PDF」→ 打印窗口选「另存为 PDF」。</div>
+      <div class="sub">整份预览都可点击直接改（包括标题、姓名、要点）；改完可「导出 Word」(.docx) 在 Word 里自由精修，再「另存为 PDF」；或直接「导出 PDF」。</div>
       <div id="resumePreview"></div>
     </div>
 
@@ -915,7 +916,7 @@
 </div>
 
 <!-- 简历版本库 · 与 AI 对话修改弹窗 -->
-<div class="mask" id="verChatMask" onclick="closeVerChat()" style="z-index:70;display:none"></div>
+<div class="mask" id="verChatMask" onclick="closeVerChat()" style="display:none"></div>
 <div class="modal" id="verChatModal" style="display:none;max-width:660px">
   <div class="modal-h">
     <span id="verChatTitle">对话修改简历</span>
@@ -926,7 +927,7 @@
   <div class="modal-b">
     <div id="verChatMsgs" class="ver-chat-msgs"></div>
     <div class="ver-chat-input">
-      <textarea id="verChatInput" placeholder="告诉 AI 你想改什么，例如：把第一段经历突出数据分析能力并量化成果；技能栏加上 Python / SQL；整体更贴合「市场营销」岗位。" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendVerChat();}"></textarea>
+      <textarea id="verChatInput" placeholder="告诉 AI 你想改什么，例如：把第一段经历突出数据分析能力并量化成果；技能栏加上 Python / SQL；整体更贴合「市场营销」岗位。" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat();}"></textarea>
       <button class="btn" id="verChatSend" onclick="sendChat()">发送</button>
     </div>
   </div>
@@ -2302,7 +2303,7 @@ function renderResumePreview(){
   }
   html+='</div>';
   box.innerHTML=html;
-  box.querySelectorAll('.rs-bullets li,.rs-role,.rs-org,.rs-line,.rs-core-req,.rs-core-pt').forEach(el=>{el.setAttribute('contenteditable','true');});
+  const sh=box.querySelector('#rsSheet');if(sh)sh.setAttribute('contenteditable','true');
 }
 function setRgenJd(){const sel=document.getElementById('rgJd');rgenJd=sel?sel.value:'';rgenCore=null;renderRgenMatch();renderResumePreview();}
 function renderRgenJd(){
@@ -2465,6 +2466,109 @@ function applyVerChat(){
   else{closeVerChat();switchTab('rgen');toast('修改已应用到当前简历，可点「保存到版本库」留存');}
 }
 function exportResumePDF(){window.print();}
+
+/* ===== 导出 Word (.docx，零依赖手写 ZIP) ===== */
+function xmlEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function crc32(buf){
+  let c,table=[];
+  for(let n=0;n<256;n++){c=n;for(let k=0;k<8;k++)c=(c&1)?(0xEDB88320^(c>>>1)):(c>>>1);table[n]=c>>>0;}
+  let crc=0xFFFFFFFF;
+  for(let i=0;i<buf.length;i++)crc=table[(crc^buf[i])&0xFF]^(crc>>>8);
+  return (crc^0xFFFFFFFF)>>>0;
+}
+function makeZip(files){
+  const enc=new TextEncoder();const parts=[];const central=[];let offset=0;
+  for(const name in files){
+    const data=enc.encode(files[name]);const crc=crc32(data);const size=data.length;const nb=enc.encode(name);
+    const lh=new Uint8Array(30+nb.length);const lv=new DataView(lh.buffer);
+    lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(6,0,true);lv.setUint16(8,0,true);
+    lv.setUint16(10,0,true);lv.setUint16(12,0,true);lv.setUint32(14,crc,true);lv.setUint32(18,size,true);lv.setUint32(22,size,true);
+    lv.setUint16(26,nb.length,true);lv.setUint16(28,0,true);lh.set(nb,30);
+    parts.push(lh,data);
+    const ch=new Uint8Array(46+nb.length);const cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0,true);cv.setUint16(10,0,true);
+    cv.setUint16(12,0,true);cv.setUint32(16,crc,true);cv.setUint32(20,size,true);cv.setUint32(24,size,true);
+    cv.setUint16(28,nb.length,true);cv.setUint16(30,0,true);cv.setUint16(32,0,true);cv.setUint16(34,0,true);cv.setUint16(36,0,true);
+    cv.setUint32(38,0,true);cv.setUint32(42,offset,true);ch.set(nb,46);central.push(ch);
+    offset+=lh.length+data.length;
+  }
+  const cdSize=central.reduce((a,c)=>a+c.length,0);
+  const end=new Uint8Array(22);const ev=new DataView(end.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);
+  ev.setUint16(8,central.length,true);ev.setUint16(10,central.length,true);
+  ev.setUint32(12,cdSize,true);ev.setUint32(16,offset,true);ev.setUint16(20,0,true);
+  const out=new Uint8Array(offset+cdSize+22);let p=0;
+  parts.forEach(pt=>{out.set(pt,p);p+=pt.length;});central.forEach(c=>{out.set(c,p);p+=c.length;});out.set(end,p);
+  return out;
+}
+const DOCX_STYLES='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:eastAsia="SimSun"/><w:sz w:val="21"/><w:szCs w:val="21"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:pPr><w:spacing w:before="120" w:after="60"/><w:jc w:val="center"/></w:pPr><w:rPr><w:b/><w:sz w:val="40"/><w:szCs w:val="40"/></w:rPr></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:pPr><w:spacing w:before="180" w:after="60"/><w:outlineLvl w:val="1"/></w:pPr><w:rPr><w:b/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr></w:style></w:styles>';
+function docxPara(text,opts){opts=opts||{};let pPr='';if(opts.style)pPr+='<w:pStyle w:val="'+opts.style+'"/>';if(opts.align)pPr+='<w:jc w:val="'+opts.align+'"/>';
+  let rPr='';if(opts.bold)rPr+='<w:b/>';if(opts.size)rPr+='<w:sz w:val="'+opts.size+'"/>';
+  let runs='';String(text||'').split('\n').forEach((ln,i)=>{runs+='<w:r>'+(rPr?'<w:rPr>'+rPr+'</w:rPr>':'')+'<w:t xml:space="preserve">'+xmlEsc(ln)+'</w:t></w:r>';if(i<String(text||'').split('\n').length-1)runs+='<w:r><w:br/></w:r>';});
+  return '<w:p>'+(pPr?'<w:pPr>'+pPr+'</w:pPr>':'')+runs+'</w:p>';
+}
+function grabSheet(){
+  const sheet=document.getElementById('rsSheet');if(!sheet)return null;
+  const name=((sheet.querySelector('.rs-name')||{}).textContent||'').trim();
+  const contacts=[...sheet.querySelectorAll('.rs-contact div')].map(d=>d.textContent.trim()).filter(Boolean);
+  const sections=[];
+  sheet.querySelectorAll(':scope > .rs-section').forEach(sec=>{
+    const title=((sec.querySelector(':scope > .rs-sec-title')||{}).textContent||'').trim();
+    const entries=[];const bullets=[];const cores=[];
+    sec.querySelectorAll(':scope > .rs-entry').forEach(en=>{
+      const role=((en.querySelector(':scope > .rs-top > .rs-role')||{}).textContent||'').trim();
+      const date=((en.querySelector(':scope > .rs-top > .rs-date')||{}).textContent||'').trim();
+      const org=((en.querySelector(':scope > .rs-org')||{}).textContent||'').trim();
+      const lines=[...en.querySelectorAll(':scope > .rs-line')].map(d=>d.textContent.trim()).filter(Boolean);
+      entries.push({role,date,org,lines});
+    });
+    sec.querySelectorAll(':scope > .rs-bullets').forEach(bl=>{[...bl.querySelectorAll('li')].forEach(li=>{const t=li.textContent.trim();if(t)bullets.push(t);});});
+    sec.querySelectorAll(':scope > .rs-core').forEach(c=>{
+      const req=((c.querySelector(':scope > .rs-core-req')||{}).textContent||'').trim();
+      const pts=[...c.querySelectorAll(':scope > .rs-core-pt')].map(d=>d.textContent.trim()).filter(Boolean);
+      cores.push({req,points:pts});
+    });
+    sections.push({title,entries,bullets,cores});
+  });
+  return {name,contacts,sections};
+}
+function buildDocxXml(sheet){
+  let body='';
+  if(sheet.name)body+=docxPara(sheet.name,{style:'Title'});
+  if(sheet.contacts.length)body+=docxPara(sheet.contacts.join('   |   '),{align:'center',size:'18'});
+  (sheet.sections||[]).forEach(sec=>{
+    if(sec.title)body+=docxPara(sec.title,{style:'Heading2'});
+    (sec.entries||[]).forEach(e=>{
+      let head=e.role||'';if(e.date)head+=(head?'   ':'')+e.date;if(head)body+=docxPara(head,{bold:true,size:'22'});
+      if(e.org)body+=docxPara(e.org,{size:'20'});
+      (e.lines||[]).forEach(l=>body+=docxPara('• '+l,{size:'20'}));
+    });
+    (sec.cores||[]).forEach(c=>{if(c.req)body+=docxPara(c.req,{bold:true,size:'20'});(c.points||[]).forEach(p=>body+=docxPara('• '+p,{size:'20'}));});
+    (sec.bullets||[]).forEach(b=>body+=docxPara('• '+b,{size:'20'}));
+  });
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+'<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>';
+}
+function downloadBlob(blob,filename){
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove();},1500);
+}
+function exportResumeDocx(){
+  const sheet=grabSheet();
+  if(!sheet||(!sheet.name&&(!sheet.sections||!sheet.sections.length))){toast('请先生成简历预览再导出 Word');return;}
+  const docXml=buildDocxXml(sheet);
+  const files={
+    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>',
+    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+    'word/_rels/document.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'word/styles.xml':DOCX_STYLES,
+    'word/document.xml':docXml
+  };
+  const bytes=makeZip(files);
+  const blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const nm=(sheet.name||'简历')+(effLang()==='en'?'-EN':'-CN')+'.docx';
+  downloadBlob(blob,nm);
+  toast('已导出 Word（.docx），用 Word 打开可自由精修，再「另存为 PDF」');
+}
 function parseAkiJSON(s){
   if(!s)return null;
   let t=s.trim().replace(/^```(?:json)?/i,'').replace(/```$/,'');
