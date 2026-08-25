@@ -784,6 +784,11 @@
         <option value="">— 不指定（通用简历）—</option>
       </select>
       <div id="rgJdMatch" class="rg-match"></div>
+      <label>参照简历（从版本库选一份作底稿 · 选 JD 后自动匹配，可手动改）</label>
+      <select id="rgRef" onchange="setRgenRef()" style="width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:8px;font-size:14px;background:#fff;color:#111">
+        <option value="">— 不参照（仅用素材库）—</option>
+      </select>
+      <div id="rgRefNote" class="rg-match" style="margin-top:4px"></div>
       <label>从「个人经历库」勾选要写进简历的经历（默认全选）</label>
       <div class="rg-exp-list" id="rgExpList"></div>
       <div class="actions">
@@ -2149,6 +2154,7 @@ let rgenSel=new Set();
 let rgenBullets={};
 let rgenPersonal=null;
 let rgenJd=null;
+let rgenRef=''; // 参照简历（版本库某份 id）；选 JD 后自动匹配，可手动改
 let rgenCore=null; // 核心能力匹配（{req,points}[]），仅在有目标 JD 时生成
 
 function effLang(){
@@ -2191,7 +2197,11 @@ function ensureBullet(id){
 }
 function selExps(){
   const lang=effLang();
-  return exps.filter(e=>rgenSel.has(e.id)).map(e=>{const b=ensureBullet(e.id);return {type:e.type,entry:b};});
+  const out=[];
+  exps.forEach(e=>{ if(rgenSel.has(e.id)){ const b=ensureBullet(e.id); out.push({type:e.type,entry:b}); } });
+  // 参照简历 / 版本库载入的条目：即使 id 不在 exps 中，只要 rgenBullets 有内容也渲染
+  [...rgenSel].forEach(id=>{ if(!exps.find(x=>x.id===id) && rgenBullets[id]){ out.push({type:(rgenBullets[id].type||'exp'),entry:rgenBullets[id]}); } });
+  return out;
 }
 function curPersonal(){ return rgenPersonal || (effLang()==='en'?DEF_EN:DEF_CN); }
 function eduToText(edu){
@@ -2208,7 +2218,7 @@ function parseEdu(text){
 function setRgenLang(){const v=document.querySelector('input[name="rgLang"]:checked');rgenLang=v?v.value:'auto';rgenPersonal=null;renderRgen();}
 function renderRgen(){
   const box=document.getElementById('rgExpList');if(!box)return;
-  renderRgenJd();renderRgenMatch();
+  renderRgenJd();renderRgenMatch();renderRgenRef();
   if(exps.length===0){box.innerHTML='<div class="rg-meta">经历库为空，先去「个人经历库」添加经历。</div>';}
   else{
     box.innerHTML=exps.map(e=>{
@@ -2274,8 +2284,8 @@ function renderResumePreview(){
     const cjd=jds.find(x=>String(x.id)===String(rgenJd));
     const ctitle=(lang==='en'?('Core Competencies (matched to '+(cjd?((cjd.industry||'')+' / '+(cjd.role||'')):'target role')+')'):('核心能力（匹配 '+(cjd?((cjd.industry||'')+' / '+(cjd.role||'')):'目标岗位')+'）'));
     html+='<div class="rs-section"><div class="rs-sec-title">'+esc(ctitle)+'</div>';
-    rgenCore.forEach(c=>{
-      html+='<div class="rs-core"><div class="rs-core-req">'+esc(c.req||'')+'</div>';
+    rgenCore.forEach((c,i)=>{
+      html+='<div class="rs-core"><div class="rs-core-req">'+circled(i+1)+' '+esc(c.req||'')+'</div>';
       (c.points||[]).forEach(pt=>{html+='<div class="rs-core-pt">'+esc(pt)+'</div>';});
       html+='</div>';
     });
@@ -2305,7 +2315,54 @@ function renderResumePreview(){
   box.innerHTML=html;
   const sh=box.querySelector('#rsSheet');if(sh)sh.setAttribute('contenteditable','true');
 }
-function setRgenJd(){const sel=document.getElementById('rgJd');rgenJd=sel?sel.value:'';rgenCore=null;renderRgenMatch();renderResumePreview();}
+function circled(n){const m=['①','②','③','④','⑤','⑥','⑦','⑧','⑨','⑩','⑪','⑫','⑬','⑭','⑮','⑯','⑰','⑱','⑲','⑳'];return m[n-1]||(n+'.');}
+function syncPersonalInputs(){
+  const p=curPersonal();const g=id=>document.getElementById(id);
+  if(g('rg-name'))g('rg-name').value=p.name||'';
+  if(g('rg-contact'))g('rg-contact').value=p.contact||'';
+  if(g('rg-avail'))g('rg-avail').value=p.avail||'';
+  if(g('rg-edu'))g('rg-edu').value=eduToText(p.edu||[]);
+  if(g('rg-certs'))g('rg-certs').value=(p.certs||[]).join('\n');
+  if(g('rg-skills'))g('rg-skills').value=(p.skills||[]).join('\n');
+  if(g('rg-honors'))g('rg-honors').value=(p.honors||[]).join('\n');
+}
+function renderRgenExpList(){
+  const box=document.getElementById('rgExpList');if(!box)return;
+  if(exps.length===0){box.innerHTML='<div class="rg-meta">经历库为空，先去「个人经历库」添加经历。</div>';return;}
+  box.innerHTML=exps.map(e=>'<label class="rg-exp"><input type="checkbox" '+(rgenSel.has(e.id)?'checked':'')+' onchange="toggleRgenExp('+e.id+',this)"><div><div>'+esc(e.name)+'</div><div class="rg-meta">'+(e.type||'')+' · '+(e.date||'')+'</div></div></label>').join('');
+}
+function loadRefContent(m){
+  rgenSel=new Set(m.expIds||[]);
+  rgenPersonal={name:m.personal.name,contact:m.personal.contact,avail:m.personal.avail,edu:m.personal.edu,certs:m.personal.certs,skills:m.personal.skills,honors:m.personal.honors};
+  rgenBullets={};const ents=m.entries||{};
+  Object.keys(ents).forEach(k=>{rgenBullets[k]={title:ents[k].title,org:ents[k].org,period:ents[k].period,bullets:ents[k].bullets};});
+  rgenCore=(m.core&&m.core.length)?m.core:null;
+}
+function renderRgenRef(){
+  const sel=document.getElementById('rgRef');if(!sel)return;
+  const cur=rgenRef||'';
+  let h='<option value="">— 不参照（仅用素材库）—</option>';
+  versions.forEach(v=>{const val=String(v.id);h+='<option value="'+val+'"'+(val===cur?' selected':'')+'>'+esc(v.name)+'</option>';});
+  sel.innerHTML=h;
+}
+function setRgenRef(){
+  const sel=document.getElementById('rgRef');rgenRef=sel?sel.value:'';
+  const m=rgenRef?versions.find(x=>String(x.id)===String(rgenRef)):null;
+  const note=document.getElementById('rgRefNote');
+  if(m){ loadRefContent(m); if(note)note.innerHTML='<div class="rg-match-r ok">✓ 已载入底稿：'+esc(m.name)+'（在其真实内容上按 JD 重组）</div>'; }
+  else { if(note)note.innerHTML=''; }
+  renderRgenExpList();syncPersonalInputs();renderResumePreview();
+}
+function setRgenJd(){
+  const sel=document.getElementById('rgJd');rgenJd=sel?sel.value:'';rgenCore=null;
+  const note=document.getElementById('rgRefNote');
+  if(rgenJd){
+    const m=versions.find(v=>v.jdId && String(v.jdId)===String(rgenJd));
+    if(m){ rgenRef=String(m.id); loadRefContent(m); if(note)note.innerHTML='<div class="rg-match-r ok">✓ 已按 JD 自动匹配版本库底稿：'+esc(m.name)+'</div>'; }
+    else { rgenRef=''; if(note)note.innerHTML=''; }
+  }else{ rgenRef=''; if(note)note.innerHTML=''; }
+  renderRgenMatch();renderRgenRef();renderRgenExpList();syncPersonalInputs();renderResumePreview();
+}
 function renderRgenJd(){
   const sel=document.getElementById('rgJd');if(!sel)return;
   const cur=rgenJd||'';
@@ -2362,6 +2419,7 @@ function delVersion(id){
 }
 function renderVersion(){
   const box=document.getElementById('versionList');if(!box)return;
+  renderRgenRef();
   if(versions.length===0){box.innerHTML='<div class="rg-meta">还没有保存的简历版本。在「AI 简历生成」里生成简历后，点「保存到版本库」即可在这里留存多份版本（可按不同 JD / 语言区分）。</div>';return;}
   box.innerHTML=versions.map(v=>{
     const badge=v.lang==='en'?'EN':'中文';
@@ -2414,34 +2472,47 @@ async function sendChat(){
   inp.value='';
   const hist=currentChat();hist.push({role:'user',content:msg});renderChat();
   const sendBtn=document.getElementById('verChatSend');if(sendBtn){sendBtn.disabled=true;sendBtn.textContent='…';}
-  let lang, jdInfo, entries, applyFn;
+  let lang, jdInfo, entries, basePersonal, applyFn;
   if(chatTarget.type==='version'){
     const v=versions.find(x=>x.id===chatTarget.id);
     lang=v.lang||'cn';
     const jd=v.jdId?jds.find(x=>String(x.id)===String(v.jdId)):null;
     jdInfo=jd?((jd.industry||'')+'/'+(jd.role||'')):'通用';
     entries=Object.keys(v.entries||{}).map(k=>{const e=v.entries[k];return {id:k,title:e.title,org:e.org,period:e.period,bullets:e.bullets};});
-    applyFn=(d)=>{const byId={};d.entries.forEach(e=>byId[String(e.id)]=e);const ne={};
+    basePersonal=v.personal;
+    applyFn=(d)=>{
+      if(d.personal){const np=d.personal;if(np.name!==undefined)v.personal.name=np.name;if(np.contact!==undefined)v.personal.contact=np.contact;if(np.avail!==undefined)v.personal.avail=np.avail;if(Array.isArray(np.edu))v.personal.edu=np.edu;if(Array.isArray(np.certs))v.personal.certs=np.certs;if(Array.isArray(np.skills))v.personal.skills=np.skills;if(Array.isArray(np.honors))v.personal.honors=np.honors;}
+      const byId={};d.entries.forEach(e=>byId[String(e.id)]=e);const ne={};
       Object.keys(v.entries||{}).forEach(k=>{const u=byId[String(k)];if(u){ne[k]={type:(v.entries[k].type||''),title:u.title!==undefined?u.title:v.entries[k].title,org:u.org!==undefined?u.org:v.entries[k].org,period:u.period!==undefined?u.period:v.entries[k].period,bullets:Array.isArray(u.bullets)&&u.bullets.length?u.bullets:v.entries[k].bullets};}else{ne[k]=v.entries[k];}});
       d.entries.forEach(e=>{if(!ne[String(e.id)]){ne[String(e.id)]={type:'',title:e.title||'',org:e.org||'',period:e.period||'',bullets:e.bullets||[]};}});
-      v.entries=ne;v.modified=true;v.date=dstr(0);};
+      v.entries=ne;v.modified=true;v.date=dstr(0);
+    };
   }else{
     lang=effLang();
     const jd=jds.find(x=>String(x.id)===String(rgenJd));
     jdInfo=jd?((jd.industry||'')+'/'+(jd.role||'')):'通用';
     const sel=exps.filter(e=>rgenSel.has(e.id));
-    entries=sel.map(e=>{const b=ensureBullet(e.id);return {id:e.id,title:b.title,org:b.org,period:b.period,bullets:b.bullets};});
-    applyFn=(d)=>{d.entries.forEach(en=>{const id=en.id;if(!rgenBullets[id])ensureBullet(id);const b=rgenBullets[id];if(en.title)b.title=en.title;if(en.org)b.org=en.org;if(Array.isArray(en.bullets)&&en.bullets.length)b.bullets=en.bullets;});renderResumePreview();};
+    const refV=rgenRef?versions.find(x=>String(x.id)===String(rgenRef)):null;
+    entries=refV?Object.keys(refV.entries||{}).map(k=>{const e=refV.entries[k];return {id:k,title:e.title,org:e.org,period:e.period,bullets:e.bullets};}):sel.map(e=>{const b=ensureBullet(e.id);return {id:e.id,title:b.title,org:b.org,period:b.period,bullets:b.bullets};});
+    if(!rgenPersonal)rgenPersonal=JSON.parse(JSON.stringify(curPersonal()));
+    basePersonal=rgenPersonal;
+    applyFn=(d)=>{
+      if(d.personal){const np=d.personal;if(np.name!==undefined)rgenPersonal.name=np.name;if(np.contact!==undefined)rgenPersonal.contact=np.contact;if(np.avail!==undefined)rgenPersonal.avail=np.avail;if(Array.isArray(np.edu))rgenPersonal.edu=np.edu;if(Array.isArray(np.certs))rgenPersonal.certs=np.certs;if(Array.isArray(np.skills))rgenPersonal.skills=np.skills;if(Array.isArray(np.honors))rgenPersonal.honors=np.honors;}
+      if(d.entries){d.entries.forEach(en=>{const id=en.id;if(!rgenBullets[id])ensureBullet(id);const b=rgenBullets[id];if(en.title)b.title=en.title;if(en.org)b.org=en.org;if(Array.isArray(en.bullets)&&en.bullets.length)b.bullets=en.bullets;});}
+      renderResumePreview();syncPersonalInputs();
+    };
   }
   const sys=(lang==='en'
-    ?'You are a resume editor. The user gives you a current resume (a JSON list of experience entries) and a revision request in Chinese/English. Apply the requested change, keep all truthful facts, never invent numbers. Reply with a short natural-language note (1-2 sentences, in the users language) on what you changed, then on a NEW line output the FULL updated resume as JSON: {"entries":[{"id","title","org","period","bullets":[...]}]}. Keep every entry id; if only a question, keep entries unchanged. No markdown fences.'
-    :'你是简历修改助手。用户提供当前简历（经历条目 JSON 列表）和一句中文修改要求。请按用户要求修改简历，保持事实真实、严禁编造数字。先写一句中文说明你改了什么，换行后输出修改后的完整简历 JSON：{"entries":[{"id":,"title":,"org":,"period":,"bullets":[...]}]}。保留所有条目 id；若只是提问，可保持 entries 不变。不要加 markdown 代码块标记。');
+    ?'You are a resume editor. The user gives you the current resume (personal info + a JSON list of experience entries) and a revision request. Apply the change, keep all truthful facts, never invent numbers. Reply with a short natural-language note (1-2 sentences, in the users language) on what you changed, then on a NEW line output the FULL updated resume as JSON: {"personal":{"name":string,"contact":string,"avail":string,"edu":[{"school":string,"loc":string,"detail":string,"period":string,"lines":[string]}],"certs":[string],"skills":[string],"honors":[string]},"entries":[{"id":string,"title":string,"org":string,"period":string,"bullets":[string]}]}. For any field the user did NOT ask to change, echo its CURRENT value EXACTLY (do not alter, do not invent). Keep every entry id; if only a question, keep all unchanged. No markdown fences.'
+    :'你是简历修改助手。用户提供当前简历（个人信息 + 经历条目 JSON 列表）和一句修改要求。请按用户要求修改，保持事实真实、严禁编造数字。先写一句中文说明改了什么，换行后输出修改后的完整简历 JSON：{"personal":{"name":,"contact":,"avail":,"edu":[{"school":,"loc":,"detail":,"period":,"lines":[]}],"certs":[],"skills":[],"honors":[]},"entries":[{"id":,"title":,"org":,"period":,"bullets":[]}]}。用户没要求改的字段，原样照抄当前值，不要改动也不要编造。保留所有条目 id；若只是提问，可保持不变。不要加 markdown 代码块标记。');
   let usr='当前简历（针对 JD：'+jdInfo+'）：\n';
+  usr+='个人信息：'+JSON.stringify(basePersonal)+'\n';
   usr+='经历条目：'+JSON.stringify(entries)+'\n\n用户修改要求：'+msg;
   try{
     const out=await akiChat([{role:'system',content:sys},{role:'user',content:usr}],{temperature:0.5,timeout:45000});
     const d=parseAkiJSON(out);
-    if(d&&d.entries){
+    if(d&&(d.entries||d.personal)){
+      if(!d.entries)d.entries=entries;
       applyFn(d);
       const js=out.indexOf('{');const reply=js>0?out.slice(0,js).trim():'已按你的要求更新简历。';
       hist.push({role:'ai',content:(reply||'已按你的要求更新简历。')});
@@ -2579,9 +2650,15 @@ function parseAkiJSON(s){
 async function polishResume(){
   const lang=effLang();
   const sel=exps.filter(e=>rgenSel.has(e.id));
-  if(sel.length===0){toast('请先勾选至少一段经历');return;}
+  const refV=rgenRef?versions.find(x=>String(x.id)===String(rgenRef)):null;
+  if(sel.length===0 && !(refV && refV.entries && Object.keys(refV.entries).length)){toast('请先勾选至少一段经历，或选择一个「参照简历」');return;}
   const btn=document.getElementById('rgGenBtn');btn.disabled=true;btn.textContent='aki 润色中…';
-  const payload=sel.map(e=>({id:e.id,type:e.type,name:e.name,date:e.date,raw:e.raw,tags:e.tags||[]}));
+  let payload;
+  if(refV){
+    payload=Object.keys(refV.entries||{}).map(k=>({id:k,type:'exp',name:refV.entries[k].title,date:refV.entries[k].period,raw:(refV.entries[k].bullets||[]).join('；'),tags:[]}));
+  }else{
+    payload=sel.map(e=>({id:e.id,type:e.type,name:e.name,date:e.date,raw:e.raw,tags:e.tags||[]}));
+  }
   const sys=(lang==='en'
     ?'You are a senior resume STRATEGY consultant and copywriter, NOT a transcriber. The target JD is the spec the resume must answer. For EACH hard/soft requirement in the JD, pick the candidate\'s real experience that best proves that competency, and rewrite it into 2-4 strong, action-verb-led, quantified bullet points in professional English — reuse the JD\'s exact terminology. Place the most JD-relevant experiences first; de-emphasize or DROP experiences irrelevant to the JD (do NOT pad with unrelated items). NEVER invent numbers, roles, or experiences. Return ONLY JSON: {"entries":[{"id":number,"title":string,"org":string,"bullets":[string,...]}]}, id must match input. No extra text.'
     :'你是资深简历策略顾问 + 文案，不是「经历搬运工」。目标 JD 是这份简历必须回答的「考题」。做法：1) 以用户提供的目标 JD 为唯一标准；2) 对 JD 的每一条硬性要求、软性要求，从候选人真实经历中挑出最能证明该能力的一段，改写成 2–4 条动词开头、带量化结果、并复用 JD 术语的简历要点，排在对应板块最前面；3) 与 JD 无关的经历大幅弱化或省略，不要为凑篇幅保留；4) 严禁编造数字、岗位、经历。只返回 JSON：{"entries":[{"id":数字,"title":字符串,"org":字符串,"bullets":[字符串,...]}]}，id 与输入一致。不要输出额外文字。');
@@ -2596,7 +2673,16 @@ async function polishResume(){
       '\n【岗位特色】'+(jd.feature||'（无）')+
       '\n\n请让简历要点逐条对应以上要求，并在 bullets 中显性体现这些能力关键词；无关经历后置或省略。';
   }
-  const user='语言：'+(lang==='en'?'English':'中文')+'\n经历：'+JSON.stringify(payload)+jdCtx;
+  let refCtx='';
+  if(refV){
+    const rentries=Object.keys(refV.entries||{}).map(k=>{const e=refV.entries[k];return {title:e.title,org:e.org,period:e.period,bullets:e.bullets};});
+    refCtx='\n\n===== 参考底稿简历（用户指定以这份已存简历为底稿；请在【其真实内容】基础上，按上述目标 JD 重组与强化、突出对应能力；严禁凭空新增不存在的经历或数字）=====\n'+
+      '底稿姓名：'+(refV.personal.name||'')+'\n'+
+      '底稿技能：'+(refV.personal.skills||[]).join('、')+'\n'+
+      '底稿教育：'+((refV.personal.edu||[]).map(s=>s.school+' '+s.period).join('；'))+'\n'+
+      '底稿经历：'+JSON.stringify(rentries);
+  }
+  const user='语言：'+(lang==='en'?'English':'中文')+'\n经历：'+JSON.stringify(payload)+jdCtx+refCtx;
   try{
     const out=await akiChat([{role:'system',content:sys},{role:'user',content:user}],{temperature:0.5,timeout:45000});
     const data=parseAkiJSON(out);
@@ -2637,7 +2723,9 @@ async function generateJdMatch(jd, entries){
   if(reqs.length===0){box.innerHTML='<div class="rg-match-card"><div class="rg-match-r">该 JD 还没有结构化提取出硬/软要求，无法生成对照。可回到 JD 分析库补全要求。</div></div>';return;}
   const sys='你是简历能力匹配专家。给定目标 JD 的若干要求和候选人的简历要点，请一次性产出两部分：\n'+
     'A) coverage：逐条判断每条 JD 要求是否被简历覆盖；\n'+
-    'B) core：把每条 JD 要求改写成一句「核心能力」短语，并给出 1–2 条来自候选人真实经历的、具体/量化的证据要点（必须基于给定简历要点，严禁编造数字或经历）。\n'+
+    'B) core：「核心能力（匹配岗位）」板块。对 JD 的每一条要求：\n'+
+    '   - req：改写成一句【核心能力】短语，格式用简短能力名（如「双语转写能力」「数据标注方法」「跨文化沟通」），不要原样照抄 JD 原话；\n'+
+    '   - points：给出 2–3 条来自候选人【真实经历】的证据要点，每条 25–45 字，结构为「动词 + 具体动作 + 量化结果/服务范围 + JD 关键词」，越细越好；若原经历无数字，用「独立负责 / 主导 / 累计 / 服务 X 家」等明确动作词，严禁编造数字或经历。\n'+
     '只返回 JSON：{"coverage":[{"req":string,"covered":true/false,"note":string}],"core":[{"req":string,"points":[string,...]}]}。不要额外文字。';
   const usr='JD 要求：\n'+reqs.map((r,i)=>(i+1)+'. '+r).join('\n')+'\n\n简历要点（按经历）：\n'+JSON.stringify(entries.map(e=>({title:e.title,bullets:e.bullets})));
   try{
